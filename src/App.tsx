@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/layout/Header';
 import { CodePanel } from './components/code/CodePanel';
 import { PromptBar } from './components/prompt/PromptBar';
@@ -6,20 +6,37 @@ import { WhiteboardCanvas } from './components/canvas/WhiteboardCanvas';
 import { TimelinePlayer } from './components/timeline/TimelinePlayer';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { PRESET_SCENARIOS } from './mock/presetScenarios';
+import { useTimeline } from './core/useTimeline';
 import type { PresetScenario, StudioSettings } from './types/studio';
 
 export const App: React.FC = () => {
-  // Scenario state
-  const [currentScenario, setCurrentScenario] = useState<PresetScenario>(PRESET_SCENARIOS[0]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  // Scenario state initialized with URL params if provided
+  const [currentScenario, setCurrentScenario] = useState<PresetScenario>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('preset');
+      const found = PRESET_SCENARIOS.find((s) => s.id === p);
+      if (found) return found;
+    }
+    return PRESET_SCENARIOS[0];
+  });
+
+  const initialStepFromUrl = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const s = parseInt(new URLSearchParams(window.location.search).get('step') || '0', 10);
+      if (!isNaN(s) && s >= 0) return s;
+    }
+    return 0;
+  }, []);
 
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<StudioSettings>(() => {
-    const savedKey = localStorage.getItem('dsa_featherless_api_key') || (import.meta.env.VITE_FEATHERLESS_API_KEY as string) || '';
-    const savedModel = localStorage.getItem('dsa_featherless_model') || 'Qwen/Qwen2.5-Coder-32B-Instruct';
+    const savedKey =
+      localStorage.getItem('dsa_featherless_api_key') ||
+      (import.meta.env.VITE_FEATHERLESS_API_KEY as string) ||
+      '';
+    const savedModel =
+      localStorage.getItem('dsa_featherless_model') || 'Qwen/Qwen2.5-Coder-32B-Instruct';
     const savedSpeech = localStorage.getItem('dsa_speech_enabled') !== 'false';
     return {
       apiKey: savedKey,
@@ -30,111 +47,86 @@ export const App: React.FC = () => {
     };
   });
 
-  const currentStep = currentScenario.steps[currentStepIndex] || currentScenario.steps[0];
-  const totalSteps = currentScenario.steps.length;
-
   // Speech synthesis narrator
-  const speakCurrentStep = useCallback((text: string) => {
-    if (!settings.speechEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.05 * speed;
-    utterance.pitch = 1.0;
-    
-    // Pick a smooth modern voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-    
-    window.speechSynthesis.speak(utterance);
-  }, [settings.speechEnabled, speed]);
-
-  // Handle step change with narration
-  const goToStep = useCallback((newIndex: number) => {
-    const boundedIndex = Math.min(Math.max(newIndex, 0), totalSteps - 1);
-    setCurrentStepIndex(boundedIndex);
-    const step = currentScenario.steps[boundedIndex];
-    if (step) {
-      speakCurrentStep(step.narration);
-    }
-  }, [totalSteps, currentScenario.steps, speakCurrentStep]);
-
-  // Stepping controls
-  const handleStepNext = useCallback(() => {
-    if (currentStepIndex < totalSteps - 1) {
-      goToStep(currentStepIndex + 1);
-    } else {
-      setIsPlaying(false);
-    }
-  }, [currentStepIndex, totalSteps, goToStep]);
-
-  const handleStepPrev = useCallback(() => {
-    if (currentStepIndex > 0) {
-      goToStep(currentStepIndex - 1);
-    }
-  }, [currentStepIndex, goToStep]);
-
-  const handleReset = useCallback(() => {
-    setIsPlaying(false);
-    goToStep(0);
-  }, [goToStep]);
-
-  // Switch scenario
-  const handleSelectScenario = (scenario: PresetScenario) => {
-    setIsPlaying(false);
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  const speakNarration = useCallback(
+    (text: string) => {
+      if (!settings.speechEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        return;
+      }
       window.speechSynthesis.cancel();
-    }
-    setCurrentScenario(scenario);
-    setCurrentStepIndex(0);
-  };
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
 
-  // Auto-play timer
-  const timerRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (isPlaying) {
-      const delay = (2400 / speed);
-      timerRef.current = window.setTimeout(() => {
-        if (currentStepIndex < totalSteps - 1) {
-          goToStep(currentStepIndex + 1);
-        } else {
-          setIsPlaying(false);
-        }
-      }, delay);
-    }
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [isPlaying, currentStepIndex, totalSteps, speed, goToStep]);
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(
+        (v) =>
+          v.lang.startsWith('en') &&
+          (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha'))
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      window.speechSynthesis.speak(utterance);
+    },
+    [settings.speechEnabled]
+  );
+
+  // Pure Timeline State Machine Hook
+  const timeline = useTimeline(currentScenario, {
+    initialStepIndex: initialStepFromUrl,
+    defaultSpeed: 1,
+    onStepChange: (step) => {
+      speakNarration(step.narration);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('preset', currentScenario.id);
+        url.searchParams.set('step', String(step.stepNumber));
+        window.history.replaceState(null, '', url.toString());
+      }
+    },
+  });
+
+  const currentStep = timeline.currentStep || currentScenario.steps[0];
 
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        setIsPlaying(prev => !prev);
+        timeline.togglePlay();
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
-        handleStepNext();
+        timeline.stepNext();
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
-        handleStepPrev();
+        timeline.stepPrev();
       } else if (e.code === 'KeyR') {
         e.preventDefault();
-        handleReset();
+        timeline.reset();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleStepNext, handleStepPrev, handleReset]);
+  }, [timeline]);
+
+  // Switch scenario
+  const handleSelectScenario = (scenario: PresetScenario) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setCurrentScenario(scenario);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('preset', scenario.id);
+      url.searchParams.set('step', '0');
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
 
   // Save settings
   const handleSaveSettings = (newSettings: StudioSettings) => {
@@ -196,26 +188,27 @@ export const App: React.FC = () => {
 
         {/* Right Studio Panel (65% width): Whiteboard Canvas + Timeline Player HUD */}
         <section className="flex-1 relative h-full overflow-hidden bg-slate-900">
-          {/* Whiteboard Canvas */}
+          {/* Whiteboard Canvas connected to pure reducer CanvasState */}
           <WhiteboardCanvas
             currentStep={currentStep}
             scenarioId={currentScenario.id}
+            canvasState={timeline.canvasState}
           />
 
           {/* Bottom Floating Timeline Player HUD */}
           <TimelinePlayer
             currentStep={currentStep}
-            stepIndex={currentStepIndex}
-            totalSteps={totalSteps}
-            isPlaying={isPlaying}
-            speed={speed}
+            stepIndex={timeline.currentStepIndex}
+            totalSteps={timeline.totalSteps}
+            isPlaying={timeline.isPlaying}
+            speed={timeline.speed}
             speechEnabled={settings.speechEnabled}
-            onPlayPause={() => setIsPlaying(prev => !prev)}
-            onStepPrev={handleStepPrev}
-            onStepNext={handleStepNext}
-            onReset={handleReset}
-            onSeek={goToStep}
-            onSpeedChange={setSpeed}
+            onPlayPause={timeline.togglePlay}
+            onStepPrev={timeline.stepPrev}
+            onStepNext={timeline.stepNext}
+            onReset={timeline.reset}
+            onSeek={timeline.seekTo}
+            onSpeedChange={timeline.setSpeed}
           />
         </section>
       </main>

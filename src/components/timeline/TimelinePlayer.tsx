@@ -1,9 +1,9 @@
 import React from 'react';
 import { Play, Pause, SkipBack, SkipForward, RotateCcw, Volume2 } from 'lucide-react';
-import type { TimelineStepMock } from '../../types/studio';
+import type { TimelineStep } from '../../types/studio';
 
 interface TimelinePlayerProps {
-  currentStep: TimelineStepMock;
+  currentStep: TimelineStep;
   stepIndex: number;
   totalSteps: number;
   isPlaying: boolean;

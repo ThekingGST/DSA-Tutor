@@ -1,24 +1,18 @@
-export interface TimelineStepMock {
-  id: string;
-  stepIndex: number;
-  totalSteps: number;
-  codeLine: number; // 1-based line number to highlight in code editor
-  title: string;
-  narration: string;
-  variables: Record<string, string | number>;
-  activeArrayIndices?: number[];
-  activePointerBadge?: { name: string; index: number };
-}
+import type { CanvasEntities, TimelineStep } from './timeline';
+
+export type { TimelineStep } from './timeline';
 
 export interface PresetScenario {
   id: string;
   name: string;
+  title: string;
   badge: string;
   language: 'python' | 'typescript' | 'cpp';
   fileName: string;
   code: string;
-  steps: TimelineStepMock[];
   initialPrompt: string;
+  initialState: CanvasEntities;
+  steps: TimelineStep[];
 }
 
 export interface StudioSettings {

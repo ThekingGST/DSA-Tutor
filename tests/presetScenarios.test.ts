@@ -16,12 +16,13 @@ test('Preset scenarios validation', async (t) => {
     assert.ok(qs.code.length > 0);
     assert.equal(qs.steps.length, 6);
     
-    // Check line numbers map to valid lines in code
+    // Check line numbers and mutations map properly
     const lines = qs.code.split('\n');
     for (const step of qs.steps) {
       assert.ok(step.codeLine >= 1 && step.codeLine <= lines.length, `Invalid codeLine ${step.codeLine}`);
       assert.ok(step.narration.length > 0);
       assert.ok(Object.keys(step.variables).length > 0);
+      assert.ok(step.mutations && step.mutations.length > 0, `Step ${step.id} has no mutations`);
     }
   });
 
@@ -32,6 +33,7 @@ test('Preset scenarios validation', async (t) => {
     for (const step of rll.steps) {
       assert.ok(step.codeLine >= 1 && step.codeLine <= lines.length);
       assert.ok(step.narration.length > 0);
+      assert.ok(step.mutations && step.mutations.length > 0);
     }
   });
 
@@ -42,6 +44,7 @@ test('Preset scenarios validation', async (t) => {
     for (const step of bst.steps) {
       assert.ok(step.codeLine >= 1 && step.codeLine <= lines.length);
       assert.ok(step.narration.length > 0);
+      assert.ok(step.mutations && step.mutations.length > 0);
     }
   });
 });

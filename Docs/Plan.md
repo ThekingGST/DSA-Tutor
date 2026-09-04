@@ -222,11 +222,12 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* Shell renders with mock data; changing mock props updates line highlights, variable cards, and timeline player.
 - Verified: Built Header, CodePanel, PromptBar, WhiteboardCanvas, TimelinePlayer HUD, SettingsModal. `npm test` passes (5/5 tests in 15ms), `npm run lint` passes (0 errors/warnings), `npm run build` passes (tsc -b && vite in 971ms). Dev server verified responding HTTP 200 on port 5173.
 
-### Phase 2: Timeline Engine & Reducer (Hour 4 - 6)
-- [ ] Define TypeScript types: `TimelineStep`, `CanvasMutation`, `PointerMap`, `HighlightState`.
-- [ ] Implement pure state reducer: `applyTimelineStep(state, step, direction)`.
-- [ ] Implement `useTimeline` hook: state machine managing `currentStep`, `isPlaying`, `speed`, `play()`, `pause()`, `stepNext()`, `stepPrev()`, `seekTo(step)`.
-- [ ] *Done Criteria:* Hook advances through a 5-step mock scenario; Play/Pause/Scrub controls respond smoothly.
+### Phase 2: Timeline Engine & Reducer (Hour 4 - 6) — DONE
+- [x] Define TypeScript types: `TimelineStep`, `CanvasMutation`, `PointerMap`, `HighlightState`, `CanvasEntities`.
+- [x] Implement pure state reducer: `applyCanvasMutation`, `applyTimelineStep`, `computeTimelineState` (deterministic fold).
+- [x] Implement `useTimeline` hook: state machine managing `currentStepIndex`, `currentStep`, `isPlaying`, `speed`, `canvasState`, `play()`, `pause()`, `stepNext()`, `stepPrev()`, `seekTo()`, `reset()`, `setSpeed()`.
+- [x] *Done Criteria:* Hook advances through scenarios; Play/Pause/Scrub controls respond smoothly; pure reducer computes swaps, pointer movements, tree insertions, and variable cards deterministically.
+- Verified: Created `src/types/timeline.ts`, `src/core/timelineReducer.ts`, and `src/core/useTimeline.ts`. Wired into `App.tsx` and `WhiteboardCanvas.tsx`. 19/19 unit tests passing across 3 test suites (`tests/*.test.ts` in 150ms). `npm run lint` passes (0 errors/warnings). `npm run build` passes cleanly. Verified in headless Windows Chrome: QuickSort swaps slots `[29, 10] -> [10, 29]` at step 2 with `swapped` highlighting, and places pivot `13` at sorted index 1 at step 5.
 
 ### Phase 3: Array & Pointer TLDraw Custom Shape (Hour 6 - 9)
 - [ ] Create `ArrayShapeUtil` extending TLDraw `ShapeUtil`.
