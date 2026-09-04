@@ -18,6 +18,7 @@ interface WhiteboardCanvasProps {
   scenarioId: string;
   canvasState: CanvasEntities;
   onSeek?: (stepIndex: number) => void;
+  onEditorMount?: (editor: Editor) => void;
 }
 
 const customShapeUtils = [
@@ -218,37 +219,37 @@ const CanvasConnectorsOverlay = track(() => {
             );
           }
         }
-
         return branches;
       })}
 
-      {/* Render Linked List Pointers dynamically anchored to live shape coordinates */}
-      {linkedShapes.map((node) => {
+      {/* Dynamic Linked List Arrows */}
+      {linkedShapes.map((shape) => {
+        const node = shape as any;
         const nextId = node.props?.nextId;
         if (!nextId) return null;
+
         const targetNode = linkedByNodeId.get(nextId);
         if (!targetNode) return null;
 
         const isForward = targetNode.x > node.x;
-
         if (isForward) {
-          const startX = node.x + (node.props?.w || 160);
-          const startY = node.y + 60;
-          const endX = targetNode.x;
-          const endY = targetNode.y + 60;
+          const startX = node.x + (node.props?.w || 160) - 10;
+          const startY = node.y + (node.props?.h || 60) / 2;
+          const endX = targetNode.x + 2;
+          const endY = targetNode.y + (targetNode.props?.h || 60) / 2;
 
           return (
             <path
               key={`list-wire-${node.id}->${targetNode.id}`}
-              d={`M ${startX} ${startY} L ${endX} ${endY}`}
-              stroke="#4f46e5"
-              strokeWidth="3"
+              d={`M ${startX} ${startY} C ${startX + 30} ${startY}, ${endX - 30} ${endY}, ${endX} ${endY}`}
+              stroke="#6366f1"
+              strokeWidth="2.5"
+              fill="none"
               markerEnd="url(#canvas-list-arrow)"
             />
           );
         } else {
-          // Backward / reversed pointer curve overhead
-          const startX = node.x + 20;
+          const startX = node.x + (node.props?.w || 160) - 20;
           const startY = node.y + 10;
           const endX = targetNode.x + (targetNode.props?.w || 160) - 20;
           const endY = targetNode.y + 10;
@@ -273,7 +274,18 @@ const CanvasConnectorsOverlay = track(() => {
 
 const customComponents: TLComponents = {
   OnTheCanvas: CanvasConnectorsOverlay,
+  MainMenu: null,
+  PageMenu: null,
+  QuickActions: null,
+  ActionsMenu: null,
+  HelpMenu: null,
+  NavigationPanel: null,
+  Toolbar: null,
   StylePanel: null,
+  MenuPanel: null,
+  Minimap: null,
+  TopPanel: null,
+  SharePanel: null,
 };
 
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
@@ -281,6 +293,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   scenarioId,
   canvasState,
   onSeek,
+  onEditorMount,
 }) => {
   const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -340,18 +353,22 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     }
   }, [editor, scenarioId]);
 
-  const handleMount = useCallback((mountedEditor: Editor) => {
-    setEditor(mountedEditor);
-    if (typeof window !== 'undefined') {
-      (window as any).__tldraw_editor = mountedEditor;
-      const params = new URLSearchParams(window.location.search);
-      const px = parseFloat(params.get('panX') || '0');
-      const py = parseFloat(params.get('panY') || '0');
-      if (px || py) {
-        mountedEditor.setCamera({ x: px, y: py, z: 1 });
+  const handleMount = useCallback(
+    (mountedEditor: Editor) => {
+      setEditor(mountedEditor);
+      onEditorMount?.(mountedEditor);
+      if (typeof window !== 'undefined') {
+        (window as any).__tldraw_editor = mountedEditor;
+        const params = new URLSearchParams(window.location.search);
+        const px = parseFloat(params.get('panX') || '0');
+        const py = parseFloat(params.get('panY') || '0');
+        if (px || py) {
+          mountedEditor.setCamera({ x: px, y: py, z: 1 });
+        }
       }
-    }
-  }, []);
+    },
+    [onEditorMount]
+  );
 
   // Compute layout coordinates for Linked List and BST
   const listPositions = useMemo(() => {

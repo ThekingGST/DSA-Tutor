@@ -8,20 +8,11 @@
 }
 
 :root {
-  --bg-studio: #0b0f19;
-  --bg-panel: #111827;
-  --border-panel: #1f2937;
-  --accent-primary: #6366f1;
-  --accent-glow: rgba(99, 102, 241, 0.25);
-  color-scheme: dark;
-}
-
-.light-theme {
   --bg-studio: #f8fafc;
   --bg-panel: #ffffff;
   --border-panel: #e2e8f0;
-  --accent-primary: #4f46e5;
-  --accent-glow: rgba(79, 70, 229, 0.15);
+  --accent-primary: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.15);
   color-scheme: light;
 }
 
@@ -33,12 +24,13 @@ body,
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background-color: var(--bg-studio);
 }
 
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-studio);
-  color: #f3f4f6;
+  color: #0f172a;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -52,27 +44,48 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.3);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.5);
+  background: rgba(148, 163, 184, 0.6);
 }
 
-/* Line pulse animation for code editor */
-@keyframes lineGlow {
+/* Hide all default TLDraw chrome that conflicts with our Excalidraw workspace */
+.tlui-menu-zone,
+.tlui-page-menu,
+.tlui-top-left-zone,
+.tlui-main-menu,
+.tlui-actions-menu,
+.tlui-help-menu,
+.tlui-quick-actions,
+.tlui-navigation-zone,
+.tlui-layout__top,
+.tlui-layout__bottom,
+.tlui-page-menu__trigger,
+.tlui-page-menu__wrapper,
+[data-testid="main.page-menu"],
+[data-testid="page-menu.button"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
+/* Active line pulse animation for code editor */
+@keyframes lineGlowLight {
   0%, 100% {
-    background-color: rgba(99, 102, 241, 0.18);
-    border-left-color: #818cf8;
+    background-color: rgba(99, 102, 241, 0.09);
+    border-left-color: #6366f1;
   }
   50% {
-    background-color: rgba(99, 102, 241, 0.28);
-    border-left-color: #a5b4fc;
+    background-color: rgba(99, 102, 241, 0.18);
+    border-left-color: #4f46e5;
   }
 }
 
 .active-code-line {
-  animation: lineGlow 2.5s ease-in-out infinite;
+  animation: lineGlowLight 2.2s ease-in-out infinite;
 }
 
 /* Hand-drawn style font utility */

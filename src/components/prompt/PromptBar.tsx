@@ -29,18 +29,18 @@ export const PromptBar: React.FC<PromptBarProps> = ({
   };
 
   return (
-    <div className="p-3 bg-[#0d1322] border-t border-slate-800/80 space-y-2.5">
+    <div className="p-3 bg-slate-50/90 border-t border-slate-200 space-y-2 select-none">
       {/* Quick Command Pills */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-        <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500 flex items-center gap-1 shrink-0">
-          <Wand2 className="w-3 h-3 text-indigo-400" /> Shortcuts:
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1 shrink-0">
+          <Wand2 className="w-3 h-3 text-indigo-500" /> Shortcuts:
         </span>
         {QUICK_COMMANDS.map((qc) => (
           <button
             key={qc.label}
             type="button"
             onClick={() => onQuickCommand(qc.cmd)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:text-indigo-300 hover:border-indigo-500/50 hover:bg-indigo-950/30 transition-all shrink-0"
+            className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50/50 transition-all shrink-0 cursor-pointer shadow-2xs"
           >
             <PlusCircle className="w-2.5 h-2.5 opacity-60" />
             <span>{qc.label}</span>
@@ -50,7 +50,7 @@ export const PromptBar: React.FC<PromptBarProps> = ({
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="relative flex items-center">
-        <div className="absolute left-3 text-indigo-400">
+        <div className="absolute left-3 text-indigo-500 pointer-events-none">
           <Sparkles className="w-4 h-4" />
         </div>
         <input
@@ -58,12 +58,12 @@ export const PromptBar: React.FC<PromptBarProps> = ({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Ask AI (e.g. 'create array [10, 5, 20]' or 'explain partition')..."
-          className="w-full rounded-xl bg-slate-900/90 border border-slate-700/80 pl-9.5 pr-20 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 shadow-inner"
+          className="w-full rounded-xl bg-white border border-slate-300 pl-9 pr-20 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 shadow-2xs transition-all font-sans"
         />
         <button
           type="submit"
           disabled={!prompt.trim()}
-          className="absolute right-1.5 flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all shadow-sm"
+          className="absolute right-1 flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:hover:bg-indigo-600 transition-all cursor-pointer shadow-xs"
         >
           <span>Ask</span>
           <ArrowUpRight className="w-3.5 h-3.5" />

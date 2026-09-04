@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { PanelLeftOpen } from 'lucide-react';
-import { Header } from './components/layout/Header';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { WorkspaceTopNav } from './components/layout/WorkspaceTopNav';
 import { CodePanel } from './components/code/CodePanel';
 import { PromptBar } from './components/prompt/PromptBar';
 import { WhiteboardCanvas } from './components/canvas/WhiteboardCanvas';
@@ -9,6 +9,7 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { PRESET_SCENARIOS } from './mock/presetScenarios';
 import { useTimeline } from './core/useTimeline';
 import type { PresetScenario, StudioSettings } from './types/studio';
+import type { Editor } from '@tldraw/tldraw';
 
 export const App: React.FC = () => {
   // Sidebar visibility state (supports ?sidebar=false or ?sidebar=0 for presentation / full whiteboard mode)
@@ -29,7 +30,7 @@ export const App: React.FC = () => {
         if (!isNaN(parsed) && parsed >= 280 && parsed <= 900) return parsed;
       }
     }
-    return 400;
+    return 380;
   });
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
 
@@ -79,6 +80,9 @@ export const App: React.FC = () => {
     return 0;
   }, []);
 
+  // TLDraw Editor instance for top pill toolbar and canvas actions
+  const [editor, setEditor] = useState<Editor | null>(null);
+
   // Settings state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<StudioSettings>(() => {
@@ -93,7 +97,7 @@ export const App: React.FC = () => {
       apiKey: savedKey,
       model: savedModel,
       speechEnabled: savedSpeech,
-      theme: 'dark',
+      theme: 'light',
       playbackSpeed: 1,
     };
   });
@@ -210,26 +214,34 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#0a0f1d] text-slate-100">
-      {/* Top Header */}
-      <Header
-        currentScenario={currentScenario}
-        onSelectScenario={handleSelectScenario}
-        settings={settings}
-        onToggleSpeech={handleToggleSpeech}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        isSidebarOpen={isSidebarOpen}
-        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-      />
+    <div className="relative flex h-screen w-screen overflow-hidden bg-[#f8f9fa] text-slate-800 select-none font-sans">
+      {/* Left-Edge Middle Arrow Toggle Button */}
+      <button
+        type="button"
+        onClick={() => setIsSidebarOpen((prev) => !prev)}
+        style={{
+          left: isSidebarOpen ? `${sidebarWidth}px` : '0px',
+        }}
+        className={`fixed top-1/2 -translate-y-1/2 z-40 flex items-center justify-center w-5 h-14 bg-white/95 hover:bg-white border border-slate-200/90 shadow-md hover:shadow-lg text-slate-500 hover:text-indigo-600 rounded-r-xl transition-all cursor-pointer group select-none ${
+          isResizingSidebar ? 'transition-none' : 'transition-all duration-300'
+        }`}
+        title={isSidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
+      >
+        {isSidebarOpen ? (
+          <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+        )}
+      </button>
 
       {/* Main Studio Split View (Resizable Left Code Panel / Right Whiteboard Canvas) */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex w-full h-full overflow-hidden relative">
         {/* Left Studio Panel: Code Editor & Prompt Bar (collapsible & resizable) */}
         <section
           style={{
             width: isSidebarOpen ? `${sidebarWidth}px` : '0px',
           }}
-          className={`h-full flex flex-col border-r border-slate-800/80 bg-[#0d1322] shrink-0 z-10 ${
+          className={`h-full flex flex-col border-r border-slate-200 bg-white shrink-0 z-20 ${
             isResizingSidebar ? 'transition-none select-none' : 'transition-all duration-300 ease-in-out'
           } ${
             isSidebarOpen
@@ -261,34 +273,30 @@ export const App: React.FC = () => {
           <div
             onPointerDown={startResizing}
             onDoubleClick={() => {
-              setSidebarWidth(400);
-              localStorage.setItem('dsa_sidebar_width', '400');
+              setSidebarWidth(380);
+              localStorage.setItem('dsa_sidebar_width', '380');
             }}
             title="Drag to resize code & whiteboard array space (Double-click to reset)"
-            className={`w-1.5 hover:w-2 -ml-0.5 cursor-col-resize z-20 transition-all flex items-center justify-center group select-none shrink-0 ${
-              isResizingSidebar ? 'bg-indigo-500 w-2' : 'bg-slate-800/60 hover:bg-indigo-500/60'
+            className={`w-1.5 hover:w-2 -ml-0.5 cursor-col-resize z-30 transition-all flex items-center justify-center group select-none shrink-0 ${
+              isResizingSidebar ? 'bg-indigo-500 w-2' : 'bg-slate-200 hover:bg-indigo-500/60'
             }`}
           >
-            <div className="w-0.5 h-7 rounded-full bg-slate-600 group-hover:bg-indigo-300" />
+            <div className="w-0.5 h-7 rounded-full bg-slate-400 group-hover:bg-indigo-500" />
           </div>
         )}
 
-        {/* Right Studio Panel: Whiteboard Canvas + Timeline Player HUD */}
-        <section className="flex-1 relative h-full overflow-hidden bg-slate-900">
-          {/* Floating Show Sidebar Button when collapsed (positioned below TLDraw top action bar) */}
-          {!isSidebarOpen && (
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="absolute top-14 left-3 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0d1322]/95 hover:bg-[#16203c] border border-indigo-500/40 hover:border-indigo-400 text-indigo-300 hover:text-white shadow-xl shadow-black/40 backdrop-blur-md text-xs font-medium transition-all cursor-pointer group"
-              title="Show sidebar (Code & AI) [Ctrl+B]"
-            >
-              <PanelLeftOpen className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
-              <span>Show Code</span>
-              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-indigo-950/80 border border-indigo-500/30 text-indigo-300">
-                Ctrl+B
-              </kbd>
-            </button>
-          )}
+        {/* Right Studio Panel: Excalidraw Whiteboard Canvas + Timeline Player HUD */}
+        <section className="flex-1 relative h-full overflow-hidden bg-[#fafafa]">
+          {/* Integrated Workspace Top Navigation (Scenario Tabs, Hamburger Menu, Settings, Top Pill Toolbar) */}
+          <WorkspaceTopNav
+            currentScenario={currentScenario}
+            onSelectScenario={handleSelectScenario}
+            settings={settings}
+            onToggleSpeech={handleToggleSpeech}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onResetTimeline={timeline.reset}
+            editor={editor}
+          />
 
           {/* Whiteboard Canvas connected to pure reducer CanvasState & Loop Tracker */}
           <WhiteboardCanvas
@@ -296,6 +304,7 @@ export const App: React.FC = () => {
             scenarioId={currentScenario.id}
             canvasState={timeline.canvasState}
             onSeek={timeline.seekTo}
+            onEditorMount={setEditor}
           />
 
           {/* Bottom Floating Timeline Player HUD */}

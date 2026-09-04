@@ -44,22 +44,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg rounded-2xl bg-[#131b2e] border border-slate-700/80 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150 font-sans">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white border border-slate-200 shadow-2xl overflow-hidden text-slate-800">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-[#0f172a]/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <div className="p-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600">
               <Key className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">Studio Settings</h3>
-              <p className="text-xs text-slate-400">Configure Featherless AI & Studio Preferences</p>
+              <h3 className="text-base font-semibold text-slate-900">Workspace Settings</h3>
+              <p className="text-xs text-slate-500">Configure Featherless AI & Studio Preferences</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,16 +70,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* API Key */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <label className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 Featherless API Key
               </label>
               {apiKey ? (
-                <span className="text-[11px] font-medium text-emerald-400 flex items-center gap-1">
+                <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Key Saved
                 </span>
               ) : (
-                <span className="text-[11px] text-amber-400">Using Mock / Preset Mode</span>
+                <span className="text-[11px] text-amber-600 font-medium">Using Mock / Preset Mode</span>
               )}
             </div>
             <div className="relative">
@@ -88,25 +88,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="fl-..."
-                className="w-full rounded-xl bg-slate-900/90 border border-slate-700/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 font-mono pr-10"
+                className="w-full rounded-xl bg-white border border-slate-300 px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-mono pr-10 shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(!showKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
               >
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
             <p className="text-[11px] text-slate-400">
-              Stored locally in browser <code className="text-slate-300">localStorage</code>. Can also be set in <code className="text-slate-300">.env.local</code> as <code className="text-slate-300">VITE_FEATHERLESS_API_KEY</code>.
+              Stored locally in browser <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">localStorage</code>.
             </p>
           </div>
 
           {/* Model Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-indigo-400" />
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <Cpu className="w-4 h-4 text-indigo-600" />
               Inference Model
             </label>
             <div className="space-y-2">
@@ -115,8 +115,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   key={m.id}
                   className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
                     model === m.id
-                      ? 'bg-indigo-600/15 border-indigo-500/60 text-white'
-                      : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:border-slate-700'
+                      ? 'bg-indigo-50/80 border-indigo-400 text-indigo-950 shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/60'
                   }`}
                 >
                   <input
@@ -124,7 +124,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     name="model"
                     checked={model === m.id}
                     onChange={() => setModel(m.id)}
-                    className="mt-0.5 text-indigo-500 focus:ring-indigo-500"
+                    className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-semibold">{m.name}</div>
@@ -136,13 +136,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Voice Narration Toggle */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-slate-800 text-slate-300">
-                {speechEnabled ? <Volume2 className="w-4 h-4 text-indigo-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+              <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 shadow-2xs">
+                {speechEnabled ? <Volume2 className="w-4 h-4 text-emerald-600" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
               </div>
               <div>
-                <div className="text-xs font-semibold text-white">Voice Narration</div>
+                <div className="text-xs font-semibold text-slate-800">Voice Narration</div>
                 <div className="text-[11px] text-slate-400">Speak algorithmic reasoning aloud on each step</div>
               </div>
             </div>
@@ -150,7 +150,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               type="button"
               onClick={() => setSpeechEnabled(!speechEnabled)}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                speechEnabled ? 'bg-indigo-600' : 'bg-slate-700'
+                speechEnabled ? 'bg-indigo-600' : 'bg-slate-300'
               }`}
             >
               <span
@@ -163,20 +163,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-[#0f172a]/60">
-          <div className="text-[11px] text-slate-400">
-            Endpoint: <code className="text-slate-300">api.featherless.ai/v1</code>
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/70">
+          <div className="text-[11px] text-slate-400 font-mono">
+            api.featherless.ai/v1
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleSave}
-              className="px-4 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-600/20"
+              className="px-4 py-1.5 rounded-xl text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-600/30 cursor-pointer"
             >
               {saveToast ? 'Saved!' : 'Save Changes'}
             </button>
