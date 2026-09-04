@@ -214,12 +214,13 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* `rtk npm run dev` runs with clean console and zero errors.
 - Verified: `npm run build` (tsc -b + vite) passes; dev serves HTTP 200 with no errors. Pinned: react 19.2.8, vite 8.2.2, typescript ~6.0.2, `@tldraw/tldraw` 5.4.0, tailwindcss 4.3.3 (v4 via `@tailwindcss/vite`), lucide-react 1.40.0, clsx 2.1.1, tailwind-merge 3.6.0, canvas-confetti 1.9.4. Package name `dsa-studio`.
 
-### Phase 1: Studio Shell & Layout (Hour 2 - 4)
-- [ ] Implement responsive 35% / 65% split-screen layout.
-- [ ] Build left panel: Code Editor wrapper with line highlighting, Variable Watcher table, and Prompt Bar.
-- [ ] Build right panel: Mount basic TLDraw canvas and Bottom Timeline Player HUD.
-- [ ] Build top navigation bar: Demo presets selector, Audio mute toggle, Settings modal.
-- [ ] *Done Criteria:* Shell renders with mock data; changing mock props updates line highlights and variable pills.
+### Phase 1: Studio Shell & Layout (Hour 2 - 4) — DONE
+- [x] Implement responsive 35% / 65% split-screen layout.
+- [x] Build left panel: Code Editor wrapper with line highlighting, and Prompt Bar.
+- [x] Build right panel: Mount basic TLDraw canvas, on-canvas Variable Cards (`max = 10`, `secondMax = 5`), and Bottom Timeline Player HUD.
+- [x] Build top navigation bar: Demo presets selector (QuickSort, Reverse List, BST), Audio mute toggle, Settings modal.
+- [x] *Done Criteria:* Shell renders with mock data; changing mock props updates line highlights, variable cards, and timeline player.
+- Verified: Built Header, CodePanel, PromptBar, WhiteboardCanvas, TimelinePlayer HUD, SettingsModal. `npm test` passes (5/5 tests in 15ms), `npm run lint` passes (0 errors/warnings), `npm run build` passes (tsc -b && vite in 971ms). Dev server verified responding HTTP 200 on port 5173.
 
 ### Phase 2: Timeline Engine & Reducer (Hour 4 - 6)
 - [ ] Define TypeScript types: `TimelineStep`, `CanvasMutation`, `PointerMap`, `HighlightState`.
