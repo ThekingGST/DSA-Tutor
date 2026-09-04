@@ -238,13 +238,14 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* Array can be directly manipulated by mouse/keyboard; programmatic calls to `movePointer` and `swap` transition visually.
 - Verified: Created `src/canvas/shapes/ArrayShapeUtil.ts`, `ArrayComponent.tsx`, and `arrayShapeLogic.ts`. Registered in `WhiteboardCanvas.tsx` via `shapeUtils={[ArrayShapeUtil]}` with `maxFontsToLoadBeforeRender: 0` for instant canvas readiness. 28/28 unit tests passing across 4 test suites (`tests/*.test.ts` in 160ms). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 1.06s. Visual verification in Windows Chrome: QuickSort partition step 0 (ghost `[-1]` cell with $i=-1$, $j=0$, $pivot=4$), step 2 (swap $[29, 10] \to [10, 29]$ with fuchsia highlights), and step 5 (pivot 13 permanently sorted at index 1).
 
-### Phase 4: Linked List & BST Custom Shapes (Hour 9 - 13)
-- [ ] Create `LinkedListNodeShapeUtil`: card with data and `next` port.
-- [ ] Implement magnetic wire connections for node pointers with rubber-band dragging.
-- [ ] Create `BSTNodeShapeUtil`: circular node with value and glowing traversal halo.
-- [ ] Implement `layoutTree(nodes, rootId)` utility: mathematical coordinate positioning with subtree width calculation.
-- [ ] Dynamic connector lines linking parent to children.
-- [ ] *Done Criteria:* Reverse linked list pointers can be dragged by hand; BST auto-arranges cleanly on insertion.
+### Phase 4: Linked List & BST Custom Shapes (Hour 9 - 13) — DONE
+- [x] Create `LinkedListNodeShapeUtil`: card with data and `next` port.
+- [x] Implement magnetic wire connections for node pointers with rubber-band dragging.
+- [x] Create `BSTNodeShapeUtil`: circular node with value and glowing traversal halo.
+- [x] Implement `layoutTree(nodes, rootId)` utility: mathematical coordinate positioning with subtree width calculation.
+- [x] Dynamic connector lines linking parent to children.
+- [x] *Done Criteria:* Reverse linked list pointers can be dragged by hand; BST auto-arranges cleanly on insertion.
+- Verified: Created `LinkedListNodeShapeUtil.ts`, `LinkedListComponent.tsx`, `linkedListLogic.ts`, `BSTNodeShapeUtil.ts`, `BSTNodeComponent.tsx`, and `treeLayoutLogic.ts`. Registered all custom shapes in `WhiteboardCanvas.tsx` with dynamic SVG connectors for node wires and tree branches. 41/41 unit tests passing across 6 suites (`tests/*.test.ts` in 188ms). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 610ms. Visual verification in Windows Chrome: Reverse Linked List step 0 (initial list with curr pointer), step 2 (mid-air pointer detachment/rewiring to null), step 4 (fully reversed list); BST Insert step 0 (root 50 active with subtrees 30 and 70), step 3 (Node 35 inserted and dynamically attached to Node 40 with auto-recalculated layout).
 
 ### Phase 5: Loop Tracker & Variable Watcher (Hour 13 - 15)
 - [ ] Create `LoopTrackerShapeUtil`: floating canvas widget with condition text and iteration pill stepper.

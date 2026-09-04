@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Tldraw } from '@tldraw/tldraw';
 import type { Editor } from '@tldraw/tldraw';
 import type { TimelineStep } from '../../types/studio';
 import type { CanvasEntities } from '../../types/timeline';
 import { ArrayShapeUtil } from '../../canvas/shapes/ArrayShapeUtil';
+import { LinkedListNodeShapeUtil } from '../../canvas/shapes/LinkedListNodeShapeUtil';
+import { BSTNodeShapeUtil } from '../../canvas/shapes/BSTNodeShapeUtil';
+import { layoutLinkedList } from '../../canvas/shapes/linkedListLogic';
+import { layoutTree } from '../../canvas/shapes/treeLayoutLogic';
 
 interface WhiteboardCanvasProps {
   currentStep: TimelineStep;
@@ -11,7 +15,7 @@ interface WhiteboardCanvasProps {
   canvasState: CanvasEntities;
 }
 
-const customShapeUtils = [ArrayShapeUtil];
+const customShapeUtils = [ArrayShapeUtil, LinkedListNodeShapeUtil, BSTNodeShapeUtil];
 
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   scenarioId,
@@ -21,25 +25,35 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 
   const variableCards = Object.values(canvasState.variables);
   const arrayEntity = canvasState.array;
-  const linkedListNodes = Object.values(canvasState.linkedListNodes);
-  const treeNodes = Object.values(canvasState.treeNodes);
+  const linkedListNodes = canvasState.linkedListNodes;
+  const treeNodes = canvasState.treeNodes;
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor);
   }, []);
 
-  // Synchronize TLDraw shape canvas with pure reducer arrayEntity
+  // Compute layout coordinates for Linked List and BST
+  const listPositions = useMemo(() => {
+    if (scenarioId !== 'reverse-linked-list') return {};
+    return layoutLinkedList(linkedListNodes, 80, 140, 220);
+  }, [scenarioId, linkedListNodes]);
+
+  const treeLayout = useMemo(() => {
+    if (scenarioId !== 'bst-insert') return { positions: {}, connectors: [] };
+    return layoutTree(treeNodes, 'n50', 100, 70, 120, 110);
+  }, [scenarioId, treeNodes]);
+
+  // Synchronize TLDraw shape canvas with pure reducer state
   useEffect(() => {
     if (!editor) return;
 
+    // 1. Synchronize Array Shape (QuickSort)
     const arrayShapeId = 'shape:dsa-main-array' as any;
-
     if (scenarioId === 'quicksort-partition' && arrayEntity) {
       const existing = editor.getShape(arrayShapeId);
       const stringifiedHighlights = Object.fromEntries(
         Object.entries(arrayEntity.highlights).map(([k, v]) => [String(k), String(v)])
       );
-
       const targetWidth = Math.max(560, (arrayEntity.values.length + 1) * 80 + 100);
 
       if (existing) {
@@ -71,17 +85,120 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         } as any);
       }
     } else {
-      // If switched away from QuickSort, remove the array shape
       const existing = editor.getShape(arrayShapeId);
-      if (existing) {
-        editor.deleteShape(arrayShapeId);
+      if (existing) editor.deleteShape(arrayShapeId);
+    }
+
+    // 2. Synchronize Linked List Node Shapes (Reverse Linked List)
+    if (scenarioId === 'reverse-linked-list') {
+      const nodeIds = Object.keys(linkedListNodes);
+      for (const nodeId of nodeIds) {
+        const node = linkedListNodes[nodeId];
+        const pos = listPositions[nodeId] || { x: 100, y: 140 };
+        const shapeId = `shape:dsa-linked-${nodeId}` as any;
+        const existing = editor.getShape(shapeId);
+
+        if (existing) {
+          editor.updateShape({
+            id: shapeId,
+            type: 'dsa-linked-node',
+            x: pos.x,
+            y: pos.y,
+            props: {
+              value: node.value,
+              nextId: node.nextId,
+              pointers: [...node.pointers],
+              highlight: node.pointers.includes('curr')
+                ? 'active'
+                : node.pointers.includes('prev')
+                ? 'sorted'
+                : 'default',
+            },
+          } as any);
+        } else {
+          editor.createShape({
+            id: shapeId,
+            type: 'dsa-linked-node',
+            x: pos.x,
+            y: pos.y,
+            props: {
+              w: 160,
+              h: 110,
+              nodeId: node.id,
+              value: node.value,
+              nextId: node.nextId,
+              pointers: [...node.pointers],
+              highlight: node.pointers.includes('curr') ? 'active' : 'default',
+            },
+          } as any);
+        }
+      }
+    } else {
+      // Clean up linked list shapes if switched away
+      const allShapes = editor.getCurrentPageShapeIds();
+      for (const id of allShapes) {
+        if (String(id).includes('dsa-linked-')) {
+          editor.deleteShape(id);
+        }
       }
     }
-  }, [editor, scenarioId, arrayEntity]);
+
+    // 3. Synchronize Tree Node Shapes (BST Insert)
+    if (scenarioId === 'bst-insert') {
+      const nodeIds = Object.keys(treeNodes);
+      for (const nodeId of nodeIds) {
+        const node = treeNodes[nodeId];
+        const pos = treeLayout.positions[nodeId] || { x: 250, y: 80 };
+        const shapeId = `shape:dsa-tree-${nodeId}` as any;
+        const existing = editor.getShape(shapeId);
+
+        if (existing) {
+          editor.updateShape({
+            id: shapeId,
+            type: 'dsa-tree-node',
+            x: pos.x,
+            y: pos.y,
+            props: {
+              value: node.value,
+              leftId: node.leftId,
+              rightId: node.rightId,
+              parentId: node.parentId,
+              highlight: node.highlight,
+            },
+          } as any);
+        } else {
+          editor.createShape({
+            id: shapeId,
+            type: 'dsa-tree-node',
+            x: pos.x,
+            y: pos.y,
+            props: {
+              w: 70,
+              h: 70,
+              nodeId: node.id,
+              value: node.value,
+              leftId: node.leftId,
+              rightId: node.rightId,
+              parentId: node.parentId,
+              highlight: node.highlight,
+            },
+          } as any);
+        }
+      }
+    } else {
+      // Clean up tree shapes if switched away
+      const allShapes = editor.getCurrentPageShapeIds();
+      for (const id of allShapes) {
+        if (String(id).includes('dsa-tree-')) {
+          editor.deleteShape(id);
+        }
+      }
+    }
+  }, [editor, scenarioId, arrayEntity, linkedListNodes, listPositions, treeNodes, treeLayout]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#fafafa]">
-      {/* TLDraw Whiteboard Canvas Engine with Custom ArrayShapeUtil */}
+      {/* TLDraw Whiteboard Canvas Engine */}
       <div className="absolute inset-0 z-0">
         <Tldraw
           shapeUtils={customShapeUtils}
@@ -89,6 +206,136 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           onMount={handleMount}
         />
       </div>
+
+      {/* Dynamic Visual Connectors Overlay for Tree and Linked List */}
+      {scenarioId === 'bst-insert' && treeLayout.connectors.length > 0 && (
+        <svg
+          className="absolute inset-0 z-5 pointer-events-none w-full h-full"
+          style={{ position: 'absolute' }}
+        >
+          <defs>
+            <marker
+              id="tree-arrow"
+              viewBox="0 0 10 10"
+              refX="6"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+            </marker>
+          </defs>
+          {treeLayout.connectors.map((c) => (
+            <g key={`${c.fromId}->${c.toId}`}>
+              <line
+                x1={c.x1}
+                y1={c.y1}
+                x2={c.x2}
+                y2={c.y2}
+                stroke="#6366f1"
+                strokeWidth="2.5"
+                strokeDasharray="4 2"
+                markerEnd="url(#tree-arrow)"
+              />
+              {/* Branch Label Badge: L or R */}
+              <circle
+                cx={(c.x1 + c.x2) / 2}
+                cy={(c.y1 + c.y2) / 2}
+                r="10"
+                fill="#e0e7ff"
+                stroke="#6366f1"
+                strokeWidth="1.5"
+              />
+              <text
+                x={(c.x1 + c.x2) / 2}
+                y={(c.y1 + c.y2) / 2 + 3.5}
+                textAnchor="middle"
+                fontSize="10"
+                fontFamily="monospace"
+                fontWeight="bold"
+                fill="#4338ca"
+              >
+                {c.branch === 'left' ? 'L' : 'R'}
+              </text>
+            </g>
+          ))}
+        </svg>
+      )}
+
+      {scenarioId === 'reverse-linked-list' && (
+        <svg
+          className="absolute inset-0 z-5 pointer-events-none w-full h-full"
+          style={{ position: 'absolute' }}
+        >
+          <defs>
+            <marker
+              id="list-arrow"
+              viewBox="0 0 10 10"
+              refX="6"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5" />
+            </marker>
+            <marker
+              id="list-arrow-reverse"
+              viewBox="0 0 10 10"
+              refX="6"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+            </marker>
+          </defs>
+          {Object.values(linkedListNodes).map((node) => {
+            if (!node.nextId || !listPositions[node.nextId] || !listPositions[node.id]) {
+              return null;
+            }
+            const fromPos = listPositions[node.id];
+            const toPos = listPositions[node.nextId];
+            const isForward = toPos.x > fromPos.x;
+
+            if (isForward) {
+              const startX = fromPos.x + 160;
+              const startY = fromPos.y + 60;
+              const endX = toPos.x;
+              const endY = toPos.y + 60;
+              return (
+                <path
+                  key={`wire-${node.id}->${node.nextId}`}
+                  d={`M ${startX} ${startY} L ${endX} ${endY}`}
+                  stroke="#4f46e5"
+                  strokeWidth="3"
+                  markerEnd="url(#list-arrow)"
+                />
+              );
+            } else {
+              // Backward / reversed pointer curve overhead
+              const startX = fromPos.x + 20;
+              const startY = fromPos.y + 10;
+              const endX = toPos.x + 140;
+              const endY = toPos.y + 10;
+              const midY = fromPos.y - 45;
+              return (
+                <path
+                  key={`wire-${node.id}->${node.nextId}`}
+                  d={`M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`}
+                  stroke="#f59e0b"
+                  strokeWidth="3"
+                  strokeDasharray="6 3"
+                  fill="none"
+                  markerEnd="url(#list-arrow-reverse)"
+                />
+              );
+            }
+          })}
+        </svg>
+      )}
 
       {/* On-Canvas Sketched Variable Cards (Floating Semantic Overlay Matching Design) */}
       <div className="absolute bottom-28 left-12 z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-xs p-4 rounded-2xl border border-slate-200 shadow-xl max-w-xl transition-all duration-300">
@@ -123,88 +370,6 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           })}
         </div>
       </div>
-
-      {/* Linked List Preview (for Linked List Scenario until Phase 4) */}
-      {scenarioId === 'reverse-linked-list' && (
-        <div className="absolute top-20 left-12 z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-xs p-6 rounded-2xl border border-slate-200 shadow-xl max-w-2xl">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-handwriting text-3xl font-bold text-slate-800 tracking-wide">
-              Linked List
-            </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600">
-              Live Reducer State
-            </span>
-          </div>
-          <div className="flex items-center gap-2 pt-2 overflow-x-auto pb-1">
-            {linkedListNodes.map((node) => (
-              <React.Fragment key={node.id}>
-                <div className="flex flex-col items-center">
-                  <div className="h-6 flex items-center gap-1">
-                    {node.pointers.map((p) => (
-                      <span key={p} className="font-handwriting text-lg font-bold text-indigo-600 animate-pulse">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex rounded-xl border-2 border-slate-600 bg-white overflow-hidden shadow-sm">
-                    <div className="w-12 h-14 flex items-center justify-center border-r-2 border-slate-300">
-                      <span className="font-handwriting text-2xl font-bold text-slate-800">{node.value}</span>
-                    </div>
-                    <div className="w-8 h-14 flex items-center justify-center bg-slate-50">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                    </div>
-                  </div>
-                </div>
-                {node.nextId ? (
-                  <span className="font-handwriting text-2xl font-bold text-indigo-500 mt-6">→</span>
-                ) : (
-                  <span className="font-handwriting text-lg text-slate-400 ml-1 mt-6">null</span>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* BST Preview (for BST Scenario until Phase 4) */}
-      {scenarioId === 'bst-insert' && (
-        <div className="absolute top-20 left-12 z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-xs p-6 rounded-2xl border border-slate-200 shadow-xl max-w-xl">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-handwriting text-3xl font-bold text-slate-800 tracking-wide">
-              Binary Search Tree
-            </h2>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600">
-              Live Reducer State
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-4 py-2">
-            {treeNodes.map((node) => {
-              const isActive = node.highlight === 'active';
-              const isVisited = node.highlight === 'visited';
-              const isSorted = node.highlight === 'sorted';
-
-              return (
-                <div
-                  key={node.id}
-                  className={`w-14 h-14 rounded-full border-2 flex items-center justify-center shadow-md transition-all duration-300 ${
-                    isActive
-                      ? 'border-indigo-600 bg-indigo-100 ring-2 ring-indigo-400 scale-110'
-                      : isVisited
-                      ? 'border-purple-500 bg-purple-50 text-purple-900'
-                      : isSorted
-                      ? 'border-emerald-600 bg-emerald-100 ring-2 ring-emerald-400 scale-105'
-                      : 'border-slate-500 bg-white'
-                  }`}
-                >
-                  <span className="font-handwriting text-2xl font-bold text-slate-800">
-                    {node.value}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
