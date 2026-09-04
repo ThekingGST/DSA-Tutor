@@ -2,7 +2,7 @@
 
 ## Session Setup
 
-- **Greenfield repo:** no app scaffolded yet — no `package.json`, `vite.config`, `tsconfig`, `src/`, README, or `opencode.json`. Stack below is intent, not existing code. Do not assume scripts, test runners, or dev servers exist; inspect before running.
+- **Scaffold (P0 done):** `dsa-studio` — npm + Vite 8 + React 19 + TypeScript (`tsc -b && vite build`). Scripts: `dev` / `build` / `lint` (oxlint) / `preview`. Deps: `@tldraw/tldraw` 5.4.0, tailwindcss 4.3.3 (v4 via `@tailwindcss/vite` plugin in `vite.config.ts`), lucide-react, clsx, tailwind-merge, canvas-confetti. Key files: `index.html`, `src/main.tsx`, `src/index.css` (tailwind import + font tokens), `.env.local` (gitignored, `VITE_FEATHERLESS_API_KEY=` placeholder). P1+ still unscaffolded — phase shells/components do not exist yet; check `Docs/Plan.md` checkboxes before assuming.
 - **CLI via RTK:** prefix supported commands with `rtk` (e.g. `rtk git status`, `rtk ls`, `rtk grep`, `rtk find`, `rtk npm`, `rtk pnpm`, `rtk cargo`, `rtk docker`, `rtk test/lint/format`). Use `rtk gain` / `rtk gain --history` for savings, `rtk proxy <cmd>` when raw output is strictly needed. Auto-rewrite is configured in `.agents/hooks.json` via `rtk rewrite`; see `.agents/rules/antigravity-rtk-rules.md`.
 - **Python via `uv` only:** use `uv run` / `uv add` for all Python (hooks, scripts). Never bare `pip`/`python3` for new tooling.
 - **Vision source:** `Idea.md` is the product vision; this file is the build blueprint. Skills in `.agents/skills/` are pinned by `skills-lock.json` — load via the skill tool as needed.

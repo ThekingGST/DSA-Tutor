@@ -4,6 +4,10 @@ node_modules/
 # Vite build output
 dist/
 dist-ssr/
+*.tsbuildinfo
+
+# Test coverage (future vitest)
+coverage/
 
 # Env (keys stay local; see AGENTS.md)
 .env.local

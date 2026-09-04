@@ -206,12 +206,13 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 [P6: Web Speech Audio]  -->  [P7: Golden Fixtures]    -->  [P8: Hackathon Polish]
 ```
 
-### Phase 0: Scaffolding & Dependencies (Hour 0 - 2)
-- [ ] Initialize React 19 + Vite + TypeScript project.
-- [ ] Install dependencies: `@tldraw/tldraw`, `lucide-react`, `tailwindcss`, `clsx`, `tailwind-merge`, `canvas-confetti`.
-- [ ] Configure Tailwind, fonts (Inter + Fira Code / JetBrains Mono), and dark/light color palette.
-- [ ] Configure `.env.local` with `VITE_FEATHERLESS_API_KEY` placeholder.
-- [ ] *Done Criteria:* `rtk npm run dev` runs with clean console and zero errors.
+### Phase 0: Scaffolding & Dependencies (Hour 0 - 2) — DONE
+- [x] Initialize React 19 + Vite + TypeScript project.
+- [x] Install dependencies: `@tldraw/tldraw`, `lucide-react`, `tailwindcss`, `clsx`, `tailwind-merge`, `canvas-confetti`.
+- [x] Configure Tailwind, fonts (Inter + Fira Code / JetBrains Mono), and dark/light color palette.
+- [x] Configure `.env.local` with `VITE_FEATHERLESS_API_KEY` placeholder.
+- [x] *Done Criteria:* `rtk npm run dev` runs with clean console and zero errors.
+- Verified: `npm run build` (tsc -b + vite) passes; dev serves HTTP 200 with no errors. Pinned: react 19.2.8, vite 8.2.2, typescript ~6.0.2, `@tldraw/tldraw` 5.4.0, tailwindcss 4.3.3 (v4 via `@tailwindcss/vite`), lucide-react 1.40.0, clsx 2.1.1, tailwind-merge 3.6.0, canvas-confetti 1.9.4. Package name `dsa-studio`.
 
 ### Phase 1: Studio Shell & Layout (Hour 2 - 4)
 - [ ] Implement responsive 35% / 65% split-screen layout.
