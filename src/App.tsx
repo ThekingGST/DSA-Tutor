@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { PanelLeftOpen } from 'lucide-react';
 import { Header } from './components/layout/Header';
 import { CodePanel } from './components/code/CodePanel';
 import { PromptBar } from './components/prompt/PromptBar';
@@ -10,6 +11,15 @@ import { useTimeline } from './core/useTimeline';
 import type { PresetScenario, StudioSettings } from './types/studio';
 
 export const App: React.FC = () => {
+  // Sidebar visibility state (supports ?sidebar=false or ?sidebar=0 for presentation / full whiteboard mode)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('sidebar');
+      if (p === 'false' || p === '0' || p === 'hidden') return false;
+    }
+    return true;
+  });
+
   // Scenario state initialized with URL params if provided
   const [currentScenario, setCurrentScenario] = useState<PresetScenario>(() => {
     if (typeof window !== 'undefined') {
@@ -93,6 +103,11 @@ export const App: React.FC = () => {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyB') {
+        e.preventDefault();
+        setIsSidebarOpen((prev) => !prev);
+        return;
+      }
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -162,12 +177,20 @@ export const App: React.FC = () => {
         settings={settings}
         onToggleSpeech={handleToggleSpeech}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
       />
 
-      {/* Main Studio Split View (35% Left / 65% Right) */}
+      {/* Main Studio Split View (35% Left / 65% Right or 100% Whiteboard) */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Studio Panel (35% width): Code Editor & Prompt Bar */}
-        <section className="w-[35%] min-w-[360px] max-w-[480px] h-full flex flex-col border-r border-slate-800/80 bg-[#0d1322] shrink-0 z-10">
+        {/* Left Studio Panel: Code Editor & Prompt Bar (collapsible) */}
+        <section
+          className={`h-full flex flex-col border-r border-slate-800/80 bg-[#0d1322] shrink-0 z-10 transition-all duration-300 ease-in-out ${
+            isSidebarOpen
+              ? 'w-[35%] min-w-[360px] max-w-[480px] opacity-100'
+              : 'w-0 min-w-0 max-w-0 opacity-0 overflow-hidden pointer-events-none border-none'
+          }`}
+        >
           {/* Code Panel with Line Highlighting */}
           <div className="flex-1 min-h-0">
             <CodePanel
@@ -175,6 +198,7 @@ export const App: React.FC = () => {
               language={currentScenario.language}
               fileName={currentScenario.fileName}
               activeLine={currentStep.codeLine}
+              onCollapse={() => setIsSidebarOpen(false)}
             />
           </div>
 
@@ -186,8 +210,23 @@ export const App: React.FC = () => {
           />
         </section>
 
-        {/* Right Studio Panel (65% width): Whiteboard Canvas + Timeline Player HUD */}
+        {/* Right Studio Panel: Whiteboard Canvas + Timeline Player HUD */}
         <section className="flex-1 relative h-full overflow-hidden bg-slate-900">
+          {/* Floating Show Sidebar Button when collapsed (positioned below TLDraw top action bar) */}
+          {!isSidebarOpen && (
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="absolute top-14 left-3 z-30 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0d1322]/95 hover:bg-[#16203c] border border-indigo-500/40 hover:border-indigo-400 text-indigo-300 hover:text-white shadow-xl shadow-black/40 backdrop-blur-md text-xs font-medium transition-all cursor-pointer group"
+              title="Show sidebar (Code & AI) [Ctrl+B]"
+            >
+              <PanelLeftOpen className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span>Show Code</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-indigo-950/80 border border-indigo-500/30 text-indigo-300">
+                Ctrl+B
+              </kbd>
+            </button>
+          )}
+
           {/* Whiteboard Canvas connected to pure reducer CanvasState */}
           <WhiteboardCanvas
             currentStep={currentStep}

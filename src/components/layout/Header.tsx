@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Volume2, VolumeX, Settings, PlayCircle, Layers, GitBranch, ArrowRightLeft } from 'lucide-react';
+import { Sparkles, Volume2, VolumeX, Settings, PlayCircle, Layers, GitBranch, ArrowRightLeft, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { PresetScenario, StudioSettings } from '../../types/studio';
 import { PRESET_SCENARIOS } from '../../mock/presetScenarios';
 
@@ -9,6 +9,8 @@ interface HeaderProps {
   settings: StudioSettings;
   onToggleSpeech: () => void;
   onOpenSettings: () => void;
+  isSidebarOpen: boolean;
+  onToggleSidebar: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,10 +19,12 @@ export const Header: React.FC<HeaderProps> = ({
   settings,
   onToggleSpeech,
   onOpenSettings,
+  isSidebarOpen,
+  onToggleSidebar,
 }) => {
   return (
     <header className="h-14 border-b border-slate-800 bg-[#0d1322] px-4 flex items-center justify-between shrink-0 select-none z-30">
-      {/* Left: Brand / Title */}
+      {/* Left: Brand / Title + Sidebar Toggle */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border border-indigo-400/30">
@@ -35,6 +39,29 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={onToggleSidebar}
+          title={isSidebarOpen ? "Hide sidebar (Code & AI) [Ctrl+B]" : "Show sidebar (Code & AI) [Ctrl+B]"}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
+            isSidebarOpen
+              ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+              : 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30'
+          }`}
+        >
+          {isSidebarOpen ? (
+            <>
+              <PanelLeftClose className="w-3.5 h-3.5 text-slate-400" />
+              <span className="hidden sm:inline text-[11px]">Hide Code</span>
+            </>
+          ) : (
+            <>
+              <PanelLeftOpen className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden sm:inline text-[11px]">Show Code</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Middle: Preset Scenario Pills */}

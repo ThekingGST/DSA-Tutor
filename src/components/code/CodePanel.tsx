@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { FileCode, Copy, Check, Terminal } from 'lucide-react';
+import { FileCode, Copy, Check, Terminal, PanelLeftClose } from 'lucide-react';
 
 interface CodePanelProps {
   code: string;
   language: string;
   fileName: string;
   activeLine: number; // 1-based line number
+  onCollapse?: () => void;
 }
 
 export const CodePanel: React.FC<CodePanelProps> = ({
@@ -13,6 +14,7 @@ export const CodePanel: React.FC<CodePanelProps> = ({
   language,
   fileName,
   activeLine,
+  onCollapse,
 }) => {
   const [copied, setCopied] = useState(false);
   const lines = code.split('\n');
@@ -34,23 +36,34 @@ export const CodePanel: React.FC<CodePanelProps> = ({
             {language}
           </span>
         </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors"
-          title="Copy Code"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-400">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" />
-              <span>Copy</span>
-            </>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors cursor-pointer"
+            title="Copy Code"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-400">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+          {onCollapse && (
+            <button
+              onClick={onCollapse}
+              className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 transition-colors cursor-pointer"
+              title="Hide sidebar (Ctrl+B)"
+            >
+              <PanelLeftClose className="w-3.5 h-3.5" />
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Code Lines Display */}
