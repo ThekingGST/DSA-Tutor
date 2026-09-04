@@ -9,6 +9,8 @@ import {
   type VariableCardsShapeProps,
 } from './variableCardsLogic';
 
+import { PANEL_CONSTANTS } from './panelLayoutLogic';
+
 export type IVariableCardsShape = TLBaseShape<
   typeof VARIABLE_CARDS_SHAPE_TYPE,
   VariableCardsShapeProps
@@ -21,8 +23,8 @@ export class VariableCardsShapeUtil extends BaseBoxShapeUtil<any> {
 
   override onResize(shape: IVariableCardsShape, info: any) {
     return resizeBox(shape as any, info, {
-      minWidth: 300,
-      minHeight: 120,
+      minWidth: PANEL_CONSTANTS.MIN_WIDTH,
+      minHeight: PANEL_CONSTANTS.MIN_HEIGHT,
     });
   }
 
@@ -34,7 +36,11 @@ export class VariableCardsShapeUtil extends BaseBoxShapeUtil<any> {
   };
 
   override getDefaultProps(): IVariableCardsShape['props'] {
-    return { ...VARIABLE_CARDS_DEFAULT_PROPS };
+    return {
+      ...VARIABLE_CARDS_DEFAULT_PROPS,
+      w: PANEL_CONSTANTS.MIN_WIDTH,
+      h: PANEL_CONSTANTS.MIN_HEIGHT,
+    };
   }
 
   override getIndicatorPath(shape: IVariableCardsShape): Path2D {

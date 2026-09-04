@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HTMLContainer } from '@tldraw/tldraw';
 import { Sparkles, Plus, Check, X } from 'lucide-react';
 import type { IVariableCardsShape, VariableCardsShapeUtil } from './VariableCardsShapeUtil.ts';
@@ -9,6 +9,7 @@ import {
   removeVariableFromList,
   type VariableItem,
 } from './variableCardsLogic';
+import { calculateVarsPanelDimensions, PANEL_CONSTANTS } from './panelLayoutLogic';
 
 export interface VariableCardsComponentProps {
   shape: IVariableCardsShape;
@@ -26,6 +27,22 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [newVal, setNewVal] = useState('');
+
+  // Auto-adapt panel size when variables expand beyond current bounds
+  useEffect(() => {
+    const nextDims = calculateVarsPanelDimensions(variables.length);
+    if (w < nextDims.w || h < nextDims.h) {
+      util.editor.updateShape({
+        id: shape.id,
+        type: shape.type,
+        props: {
+          ...shape.props,
+          w: Math.max(w, nextDims.w),
+          h: Math.max(h, nextDims.h),
+        },
+      } as any);
+    }
+  }, [variables.length, w, h, shape.props, shape.id, shape.type, util.editor]);
 
   // Commit inline edit of an existing variable
   const handleCommitEdit = (name: string) => {
@@ -55,7 +72,7 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
     setEditVal('');
   };
 
-  // Add new variable
+  // Add new variable with automatic size adaptation
   const handleCommitAdd = () => {
     if (newName.trim() !== '') {
       const parsedNum = Number(newVal);
@@ -67,12 +84,15 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
         isUpdated: true,
       };
       const updated = upsertVariableInList(variables, newItem);
+      const nextDims = calculateVarsPanelDimensions(updated.length, w, h);
 
       util.editor.updateShape({
         id: shape.id,
         type: shape.type,
         props: {
           ...shape.props,
+          w: nextDims.w,
+          h: nextDims.h,
           variables: updated,
         },
       } as any);
@@ -82,15 +102,18 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
     setNewVal('');
   };
 
-  // Delete variable
+  // Delete variable with automatic size adaptation
   const handleDeleteVar = (name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = removeVariableFromList(variables, name);
+    const nextDims = calculateVarsPanelDimensions(updated.length);
     util.editor.updateShape({
       id: shape.id,
       type: shape.type,
       props: {
         ...shape.props,
+        w: Math.max(PANEL_CONSTANTS.MIN_WIDTH, nextDims.w),
+        h: Math.max(PANEL_CONSTANTS.MIN_HEIGHT, nextDims.h),
         variables: updated,
       },
     } as any);
@@ -99,13 +122,14 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
   return (
     <HTMLContainer
       id={shape.id}
+      className="p-4 sm:p-5 bg-white/95 backdrop-blur-md rounded-2xl border-2 border-slate-200/90 shadow-xl shadow-indigo-500/5 select-none text-slate-800 transition-all font-sans overflow-visible flex flex-col justify-between"
       style={{
         width: w,
         height: h,
+        pointerEvents: 'all',
       }}
     >
-      <div className="w-full h-full flex flex-col justify-between p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border-2 border-slate-200/90 shadow-xl shadow-indigo-500/5 select-none text-slate-800 transition-all font-sans overflow-hidden">
-        {/* Top Header Row */}
+      {/* Top Header Row */}
         <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs">
@@ -176,8 +200,8 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
           </div>
         )}
 
-        {/* Cards Flow Area */}
-        <div className="flex flex-wrap items-center gap-2 overflow-y-auto flex-1 py-1.5 my-0.5 no-scrollbar content-start">
+        {/* Cards Flow Area (Centered Horizontally & Vertically with generous breathing room) */}
+        <div className="flex-1 flex flex-wrap items-center justify-center content-center gap-2.5 overflow-y-auto overflow-x-hidden py-2.5 px-2 my-auto no-scrollbar scrollbar-none">
           {variables.map((card) => {
             const theme = getVariableTheme(card.color);
             const isEditing = editingVar === card.name;
@@ -240,7 +264,6 @@ export const VariableCardsComponent: React.FC<VariableCardsComponentProps> = ({
           <span>✎ Double-click card to edit value</span>
           <span>⇋ Live state</span>
         </div>
-      </div>
     </HTMLContainer>
   );
 };

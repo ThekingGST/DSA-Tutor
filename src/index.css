@@ -51,6 +51,19 @@ body {
   background: rgba(148, 163, 184, 0.6);
 }
 
+/* Suppress scrollbars completely on canvas panels to prevent visual cutoffs */
+.scrollbar-none,
+.no-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 /* Hide all default TLDraw chrome that conflicts with our Excalidraw workspace */
 .tlui-menu-zone,
 .tlui-page-menu,

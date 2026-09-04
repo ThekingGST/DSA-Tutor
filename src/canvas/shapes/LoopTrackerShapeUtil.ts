@@ -9,6 +9,8 @@ import {
   type LoopTrackerShapeProps,
 } from './loopTrackerLogic';
 
+import { PANEL_CONSTANTS } from './panelLayoutLogic';
+
 export type ILoopTrackerShape = TLBaseShape<
   typeof LOOP_TRACKER_SHAPE_TYPE,
   LoopTrackerShapeProps
@@ -21,8 +23,8 @@ export class LoopTrackerShapeUtil extends BaseBoxShapeUtil<any> {
 
   override onResize(shape: ILoopTrackerShape, info: any) {
     return resizeBox(shape as any, info, {
-      minWidth: 280,
-      minHeight: 120,
+      minWidth: PANEL_CONSTANTS.MIN_WIDTH,
+      minHeight: PANEL_CONSTANTS.MIN_HEIGHT,
     });
   }
 
@@ -39,7 +41,11 @@ export class LoopTrackerShapeUtil extends BaseBoxShapeUtil<any> {
   };
 
   override getDefaultProps(): ILoopTrackerShape['props'] {
-    return { ...LOOP_TRACKER_DEFAULT_PROPS };
+    return {
+      ...LOOP_TRACKER_DEFAULT_PROPS,
+      w: PANEL_CONSTANTS.MIN_WIDTH,
+      h: 200,
+    };
   }
 
   override getIndicatorPath(shape: ILoopTrackerShape): Path2D {

@@ -15,3 +15,19 @@
 
 ## 3. Verification Command
 - Run `npm run cleanup:browsers` to verify and purge any lingering headless processes in both WSL and the Windows host without affecting user sessions.
+
+## 4. WSL vs Windows Browser / Playwright Rule
+- **WSL cannot use Playwright**: WSL lacks the Linux GUI, display server, and graphic library dependencies required for Playwright/Chromium execution.
+- **Run browser testing strictly in Windows (outside WSL)**:
+  - When browser automation, page rendering checks, or visual screenshots are required, run them via Windows host binaries:
+    - Windows-native Chrome: `"/mnt/c/Program Files/Google/Chrome/Application/chrome.exe"`
+    - Windows Node / Playwright: `"/mnt/c/Program Files/nodejs/node.exe"`
+  - **Redirect stdin**: Always append `< /dev/null` to Windows `.exe` calls from WSL to prevent terminal/pipe hanging.
+  - Example headless Chrome screenshot command:
+    ```bash
+    "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe" \
+      --headless=new --disable-gpu --window-size=1440,900 \
+      --screenshot="C:\Users\Saiteja\AppData\Local\Temp\screenshot.png" \
+      "http://localhost:5173/?..." < /dev/null
+    ```
+  - Always execute `npm run cleanup:browsers` afterwards.

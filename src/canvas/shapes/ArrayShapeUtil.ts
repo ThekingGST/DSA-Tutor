@@ -3,6 +3,7 @@ import { BaseBoxShapeUtil, resizeBox } from '@tldraw/tldraw';
 import type { TLBaseShape } from '@tldraw/tldraw';
 import { T } from '@tldraw/validate';
 import { ArrayComponent } from './ArrayComponent.tsx';
+import { PANEL_CONSTANTS } from './panelLayoutLogic';
 
 export type IArrayShape = TLBaseShape<
   'dsa-array',
@@ -23,8 +24,8 @@ export class ArrayShapeUtil extends BaseBoxShapeUtil<any> {
 
   override onResize(shape: IArrayShape, info: any) {
     return resizeBox(shape as any, info, {
-      minWidth: 360,
-      minHeight: 180,
+      minWidth: PANEL_CONSTANTS.MIN_WIDTH,
+      minHeight: PANEL_CONSTANTS.MIN_HEIGHT,
     });
   }
 
@@ -40,7 +41,7 @@ export class ArrayShapeUtil extends BaseBoxShapeUtil<any> {
   override getDefaultProps(): IArrayShape['props'] {
     return {
       w: 560,
-      h: 230,
+      h: 256,
       name: 'arr',
       values: [29, 10, 14, 37, 13],
       pointers: { i: 0, j: 1, pivot: 4 },

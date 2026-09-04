@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HTMLContainer } from '@tldraw/tldraw';
 import type { IArrayShape, ArrayShapeUtil } from './ArrayShapeUtil';
+import { calculateArrayPanelDimensions } from './panelLayoutLogic';
 
 export interface ArrayComponentProps {
   shape: IArrayShape;
@@ -23,6 +24,22 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
   const [editVal, setEditVal] = useState<string>('');
   const [selectedPointer, setSelectedPointer] = useState<string | null>(null);
 
+  // Auto-adapt panel size when values expand beyond current bounds
+  useEffect(() => {
+    const nextDims = calculateArrayPanelDimensions(values.length);
+    if (shape.props.w < nextDims.w || shape.props.h < nextDims.h) {
+      util.editor.updateShape({
+        id: shape.id,
+        type: shape.type,
+        props: {
+          ...shape.props,
+          w: Math.max(shape.props.w, nextDims.w),
+          h: Math.max(shape.props.h, nextDims.h),
+        },
+      } as any);
+    }
+  }, [values.length, shape.props, shape.id, shape.type, util.editor]);
+
   // Commit inline edit
   const handleCommitEdit = (index: number) => {
     const parsed = parseInt(editVal, 10);
@@ -41,16 +58,17 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
     setEditingIndex(null);
   };
 
-  // Add element
+  // Add element with automatic size adaptation
   const handleAddElement = () => {
     const nextValues = [...values, Math.floor(Math.random() * 50) + 1];
-    const newWidth = Math.max(shape.props.w, (nextValues.length + 2) * 80 + 80);
+    const nextDims = calculateArrayPanelDimensions(nextValues.length, shape.props.w, shape.props.h);
     util.editor.updateShape({
       id: shape.id,
       type: shape.type,
       props: {
         ...shape.props,
-        w: newWidth,
+        w: nextDims.w,
+        h: nextDims.h,
         values: nextValues,
       },
     } as any);
@@ -107,10 +125,14 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
     pointersBySlot.set(slotIdx, list);
   }
 
+  // Compute total width of the slots row so pointers and slots share the same centered coordinate system
+  const slotsTotal = values.length + 1;
+  const slotsRowWidth = slotsTotal * 84 - 12;
+
   return (
     <HTMLContainer
       id={shape.id}
-      className="px-4 py-3 bg-white/95 rounded-2xl border-2 border-slate-300 shadow-xl select-none flex flex-col justify-start gap-1.5"
+      className="p-4 sm:p-5 bg-white/95 backdrop-blur-md rounded-2xl border-2 border-slate-300 shadow-xl select-none flex flex-col justify-between overflow-visible"
       style={{
         width: shape.props.w,
         height: shape.props.h,
@@ -118,7 +140,7 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
       }}
     >
       {/* Array Header Title & Quick Actions */}
-      <div className="flex items-center justify-between pb-1 border-b border-dashed border-slate-200 shrink-0">
+      <div className="flex items-center justify-between pb-2 border-b border-dashed border-slate-200 mb-1.5 shrink-0">
         <div className="flex items-center gap-2">
           <span className="font-handwriting text-2xl font-bold text-slate-800">
             {name || 'Array'}
@@ -142,58 +164,62 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
         </button>
       </div>
 
-      {/* 1D Array Slots Horizontal Scroll Area */}
-      <div className="relative pt-1 pb-1 overflow-x-auto overflow-y-visible flex-1 flex flex-col justify-start min-h-0">
-        {/* Continuous Gliding Pointer Track (Smooth animated sliding across slots) */}
-        <div className="relative h-8 min-w-max w-full overflow-visible mb-2 shrink-0 z-30">
-          {pointerList.map(({ name, slotIdx }) => {
-            const colorConfig = POINTER_COLORS[name] || {
-              bg: 'bg-slate-700',
-              text: 'text-white',
-              ring: 'ring-slate-400',
-            };
-            const isSelected = selectedPointer === name;
+      {/* 1D Array Slots Centered Area (Horizontally & Vertically Centered with generous breathing room) */}
+      <div className="relative overflow-x-auto overflow-y-hidden flex-1 flex flex-col justify-center items-center min-h-0 py-2 px-3 no-scrollbar scrollbar-none">
+        <div
+          className="relative flex flex-col items-center justify-center my-auto shrink-0 overflow-visible"
+          style={{ width: slotsRowWidth, minWidth: slotsRowWidth }}
+        >
+          {/* Continuous Gliding Pointer Track (Smooth animated sliding across slots) */}
+          <div className="relative h-8 w-full overflow-visible mb-2 shrink-0 z-30">
+            {pointerList.map(({ name, slotIdx }) => {
+              const colorConfig = POINTER_COLORS[name] || {
+                bg: 'bg-slate-700',
+                text: 'text-white',
+                ring: 'ring-slate-400',
+              };
+              const isSelected = selectedPointer === name;
 
-            const slotPeers = pointersBySlot.get(slotIdx) || [name];
-            const peerIndex = slotPeers.indexOf(name);
-            const totalPeers = slotPeers.length;
+              const slotPeers = pointersBySlot.get(slotIdx) || [name];
+              const peerIndex = slotPeers.indexOf(name);
+              const totalPeers = slotPeers.length;
 
-            // Base center coordinate: slot [-1] center is 36px, pitch is 84px
-            const baseCenterX = 36 + (slotIdx + 1) * 84;
-            // Clean horizontal stagger if multiple pointers occupy same slot
-            const staggerOffset = totalPeers > 1 ? (peerIndex - (totalPeers - 1) / 2) * 26 : 0;
-            const targetX = baseCenterX + staggerOffset;
+              // Base center coordinate: slot [-1] center is 36px, pitch is 84px
+              const baseCenterX = 36 + (slotIdx + 1) * 84;
+              // Clean horizontal stagger if multiple pointers occupy same slot
+              const staggerOffset = totalPeers > 1 ? (peerIndex - (totalPeers - 1) / 2) * 26 : 0;
+              const targetX = baseCenterX + staggerOffset;
 
-            return (
-              <div
-                key={name}
-                style={{
-                  transform: `translateX(${targetX}px) translateX(-50%)`,
-                  transition: 'transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-                }}
-                className="absolute top-0 left-0 flex items-center justify-center pointer-events-auto z-30"
-              >
+              return (
                 <div
-                  draggable
-                  onDragStart={(e) => handlePointerDragStart(name, e)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedPointer(isSelected ? null : name);
+                  key={name}
+                  style={{
+                    transform: `translateX(${targetX}px) translateX(-50%)`,
+                    transition: 'transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                   }}
-                  className={`px-2.5 py-0.5 rounded-full ${colorConfig.bg} ${colorConfig.text} font-handwriting text-sm font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform ${
-                    isSelected ? `ring-3 ${colorConfig.ring} scale-110` : ''
-                  }`}
-                  title={`Drag pointer ${name} or click to select, then click a slot to snap`}
+                  className="absolute top-0 left-0 flex items-center justify-center pointer-events-auto z-30"
                 >
-                  {name}
+                  <div
+                    draggable
+                    onDragStart={(e) => handlePointerDragStart(name, e)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPointer(isSelected ? null : name);
+                    }}
+                    className={`px-2.5 py-0.5 rounded-full ${colorConfig.bg} ${colorConfig.text} font-handwriting text-sm font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform ${
+                      isSelected ? `ring-3 ${colorConfig.ring} scale-110` : ''
+                    }`}
+                    title={`Drag pointer ${name} or click to select, then click a slot to snap`}
+                  >
+                    {name}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Array Slots Row */}
-        <div className="flex items-center gap-3 min-w-max relative z-10 shrink-0 pt-0.5">
+          {/* Array Slots Row */}
+          <div className="flex items-center gap-3 w-full relative z-10 shrink-0 pt-0.5">
           {/* Pre-Array Start Zone (ghost cell for index -1) */}
           <div
             className={`w-[72px] shrink-0 flex flex-col items-center cursor-pointer rounded-xl p-1 transition-all ${
@@ -286,11 +312,12 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
               </div>
             );
           })}
+          </div>
         </div>
       </div>
 
       {/* Footer Instructions */}
-      <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between pt-1 border-t border-slate-100 mt-auto shrink-0">
+      <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between pt-1.5 border-t border-slate-100 shrink-0">
         <span>✎ Double-click slot to edit</span>
         <span>⇄ Drag or click pointer to snap to slot</span>
       </div>

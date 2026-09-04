@@ -12,6 +12,13 @@ import { layoutLinkedList } from '../../canvas/shapes/linkedListLogic';
 import { layoutTree } from '../../canvas/shapes/treeLayoutLogic';
 import { entityToLoopShapeProps } from '../../canvas/shapes/loopTrackerLogic';
 import { entityMapToVariableItems } from '../../canvas/shapes/variableCardsLogic';
+import {
+  calculateArrayPanelDimensions,
+  calculateVarsPanelDimensions,
+  calculateLoopPanelDimensions,
+  calculateLinkedListNodeDimensions,
+  calculateTreeNodeDimensions,
+} from '../../canvas/shapes/panelLayoutLogic';
 
 interface WhiteboardCanvasProps {
   currentStep: TimelineStep;
@@ -116,21 +123,22 @@ const CanvasConnectorsOverlay = track(() => {
       {/* Render Tree Branches dynamically anchored to live shape coordinates */}
       {treeShapes.map((parent) => {
         const branches: React.ReactNode[] = [];
-        const pRadius = 35; // 70px diameter circle
+        const pRadius = (parent.props?.w || 76) / 2;
         const cx1 = parent.x + pRadius;
-        const cy1 = parent.y + pRadius;
+        const cy1 = parent.y + (parent.props?.h || 76) / 2;
 
         // Left child branch
         if (parent.props?.leftId) {
           const child = treeByNodeId.get(parent.props.leftId);
           if (child) {
-            const cx2 = child.x + pRadius;
-            const cy2 = child.y + pRadius;
+            const cRadius = (child.props?.w || 76) / 2;
+            const cx2 = child.x + cRadius;
+            const cy2 = child.y + (child.props?.h || 76) / 2;
             const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
             const x1 = cx1 + pRadius * Math.cos(angle);
             const y1 = cy1 + pRadius * Math.sin(angle);
-            const x2 = cx2 - (pRadius + 2) * Math.cos(angle);
-            const y2 = cy2 - (pRadius + 2) * Math.sin(angle);
+            const x2 = cx2 - (cRadius + 2) * Math.cos(angle);
+            const y2 = cy2 - (cRadius + 2) * Math.sin(angle);
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
 
@@ -174,15 +182,17 @@ const CanvasConnectorsOverlay = track(() => {
         if (parent.props?.rightId) {
           const child = treeByNodeId.get(parent.props.rightId);
           if (child) {
-            const cx2 = child.x + pRadius;
-            const cy2 = child.y + pRadius;
+            const cRadius = (child.props?.w || 76) / 2;
+            const cx2 = child.x + cRadius;
+            const cy2 = child.y + (child.props?.h || 76) / 2;
             const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
             const x1 = cx1 + pRadius * Math.cos(angle);
             const y1 = cy1 + pRadius * Math.sin(angle);
-            const x2 = cx2 - (pRadius + 2) * Math.cos(angle);
-            const y2 = cy2 - (pRadius + 2) * Math.sin(angle);
+            const x2 = cx2 - (cRadius + 2) * Math.cos(angle);
+            const y2 = cy2 - (cRadius + 2) * Math.sin(angle);
             const midX = (x1 + x2) / 2;
             const midY = (y1 + y2) / 2;
+
 
             branches.push(
               <g key={`tree-${parent.id}->${child.id}-right`}>
@@ -378,7 +388,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 
   const treeLayout = useMemo(() => {
     if (scenarioId !== 'bst-insert') return { positions: {}, connectors: [] };
-    return layoutTree(treeNodes, 'n50', 100, 70, 120, 110);
+    return layoutTree(treeNodes, 'n50', 60, 70, 110, 110);
   }, [scenarioId, treeNodes]);
 
   // Synchronize TLDraw shape canvas with pure reducer state
@@ -393,26 +403,16 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const stringifiedHighlights = Object.fromEntries(
         Object.entries(arrayEntity.highlights).map(([k, v]) => [String(k), String(v)])
       );
-      const targetWidth = Math.max(540, (arrayEntity.values.length + 1) * 75 + 80);
+      const adaptedArrayDims = calculateArrayPanelDimensions(arrayEntity.values.length);
 
       if (existing) {
-        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
-        const existingProps = (existing as any).props || {};
-        const prevLen = existingProps.values?.length || 0;
-        const nextLen = arrayEntity.values.length;
-
-        let preservedWidth = typeof existingProps.w === 'number' ? existingProps.w : targetWidth;
-        if (nextLen > prevLen && preservedWidth < targetWidth) {
-          preservedWidth = targetWidth;
-        }
-        const preservedHeight = typeof existingProps.h === 'number' ? Math.max(existingProps.h, 240) : 240;
-
+        // Do NOT pass x and y to preserve user positioning across steps
         editor.updateShape({
           id: arrayShapeId,
           type: 'dsa-array',
           props: {
-            w: preservedWidth,
-            h: preservedHeight,
+            w: adaptedArrayDims.w,
+            h: adaptedArrayDims.h,
             values: [...arrayEntity.values],
             pointers: { ...arrayEntity.pointers },
             highlights: stringifiedHighlights,
@@ -425,8 +425,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           x: 60,
           y: 70,
           props: {
-            w: targetWidth,
-            h: 240,
+            w: adaptedArrayDims.w,
+            h: adaptedArrayDims.h,
             name: arrayEntity.name || 'arr',
             values: [...arrayEntity.values],
             pointers: { ...arrayEntity.pointers },
@@ -447,6 +447,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         const pos = listPositions[nodeId] || { x: 100, y: 140 };
         const shapeId = `shape:dsa-linked-${nodeId}` as any;
         const existing = editor.getShape(shapeId);
+        const adaptedListDims = calculateLinkedListNodeDimensions(node.pointers.length, node.value);
 
         if (existing) {
           // Do NOT pass x and y to preserve user positioning across steps
@@ -454,6 +455,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             id: shapeId,
             type: 'dsa-linked-node',
             props: {
+              w: adaptedListDims.w,
+              h: adaptedListDims.h,
               value: node.value,
               nextId: node.nextId,
               pointers: [...node.pointers],
@@ -471,8 +474,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             x: pos.x,
             y: pos.y,
             props: {
-              w: 170,
-              h: 120,
+              w: adaptedListDims.w,
+              h: adaptedListDims.h,
               nodeId: node.id,
               value: node.value,
               nextId: node.nextId,
@@ -500,6 +503,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         const pos = treeLayout.positions[nodeId] || { x: 100, y: 100 };
         const shapeId = `shape:dsa-tree-${nodeId}` as any;
         const existing = editor.getShape(shapeId);
+        const adaptedTreeDims = calculateTreeNodeDimensions(node.value);
 
         if (existing) {
           // Do NOT pass x and y to preserve user positioning across steps
@@ -507,6 +511,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             id: shapeId,
             type: 'dsa-tree-node',
             props: {
+              w: adaptedTreeDims.w,
+              h: adaptedTreeDims.h,
               value: node.value,
               leftId: node.leftId,
               rightId: node.rightId,
@@ -521,8 +527,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             x: pos.x,
             y: pos.y,
             props: {
-              w: 70,
-              h: 70,
+              w: adaptedTreeDims.w,
+              h: adaptedTreeDims.h,
               nodeId: node.id,
               value: node.value,
               leftId: node.leftId,
@@ -547,23 +553,25 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     const loopShapeId = 'shape:dsa-main-loop' as any;
     if (loopEntity) {
       const existing = editor.getShape(loopShapeId);
-      const loopProps = entityToLoopShapeProps(loopEntity, 380, 148);
+      const loopPillsCount = loopEntity.iterationPills?.length || loopEntity.totalIterations;
+      const adaptedLoopDims = calculateLoopPanelDimensions(
+        loopPillsCount,
+        loopEntity.header,
+        loopEntity.conditionText
+      );
+      const loopProps = entityToLoopShapeProps(loopEntity, adaptedLoopDims.w, adaptedLoopDims.h);
       const loopX = scenarioId === 'quicksort-partition' ? 620 : 80;
       const loopY = scenarioId === 'quicksort-partition' ? 70 : 340;
 
       if (existing) {
-        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
-        const existingProps = (existing as any).props || {};
-        const preservedW = typeof existingProps.w === 'number' ? existingProps.w : loopProps.w;
-        const preservedH = typeof existingProps.h === 'number' ? existingProps.h : loopProps.h;
-
+        // Do NOT pass x and y to preserve user positioning across steps
         editor.updateShape({
           id: loopShapeId,
           type: 'dsa-loop-tracker',
           props: {
             ...loopProps,
-            w: preservedW,
-            h: preservedH,
+            w: adaptedLoopDims.w,
+            h: adaptedLoopDims.h,
           },
         } as any);
       } else {
@@ -572,7 +580,11 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           type: 'dsa-loop-tracker',
           x: loopX,
           y: loopY,
-          props: { ...loopProps },
+          props: {
+            ...loopProps,
+            w: adaptedLoopDims.w,
+            h: adaptedLoopDims.h,
+          },
         } as any);
       }
     } else {
@@ -585,21 +597,18 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     if (variableCards.length > 0) {
       const existing = editor.getShape(varShapeId);
       const varItems = entityMapToVariableItems(canvasState.variables, changedVars);
-      const defaultX = scenarioId === 'quicksort-partition' ? 60 : scenarioId === 'bst-insert' ? 540 : 500;
+      const adaptedVarDims = calculateVarsPanelDimensions(varItems.length);
+      const defaultX = scenarioId === 'quicksort-partition' ? 60 : scenarioId === 'bst-insert' ? 600 : 570;
       const defaultY = scenarioId === 'bst-insert' ? 70 : 340;
 
       if (existing) {
-        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
-        const existingProps = (existing as any).props || {};
-        const preservedW = typeof existingProps.w === 'number' ? existingProps.w : 520;
-        const preservedH = typeof existingProps.h === 'number' ? existingProps.h : 175;
-
+        // Do NOT pass x and y to preserve user positioning across steps
         editor.updateShape({
           id: varShapeId,
           type: 'dsa-variable-cards',
           props: {
-            w: preservedW,
-            h: preservedH,
+            w: adaptedVarDims.w,
+            h: adaptedVarDims.h,
             title: 'vars',
             variables: varItems,
           },
@@ -611,13 +620,14 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           x: defaultX,
           y: defaultY,
           props: {
-            w: 520,
-            h: 175,
+            w: adaptedVarDims.w,
+            h: adaptedVarDims.h,
             title: 'vars',
             variables: varItems,
           },
         } as any);
       }
+
     } else {
       const existing = editor.getShape(varShapeId);
       if (existing) editor.deleteShape(varShapeId);
