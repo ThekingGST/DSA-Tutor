@@ -15,9 +15,33 @@ import {
   createDynamicBubbleSortStoryboard,
   createDynamicForLoopStoryboard,
   createDynamicReverseArrayStoryboard,
+  createDynamicStackStoryboard,
+  createDynamicCircularQueueStoryboard,
+  createDynamicReverseDoublyLinkedListStoryboard,
+  createDynamicCircularLinkedListStoryboard,
+  createDynamicAvlTreeStoryboard,
+  createDynamicMinHeapStoryboard,
+  createDynamicDijkstraStoryboard,
+  createDynamicBfsStoryboard,
+  createDynamicDfsStoryboard,
+  createDynamicSlidingWindowStoryboard,
+  createDynamicDpStoryboard,
+  createDynamicRecursionStoryboard,
 } from './dynamicAlgorithmStoryboards.ts';
 
-export type DsaStructureType = 'array' | 'linked-list' | 'tree' | 'stack' | 'queue' | 'variable';
+export type DsaStructureType =
+  | 'array'
+  | 'linked-list'
+  | 'doubly-linked-list'
+  | 'circular-linked-list'
+  | 'tree'
+  | 'stack'
+  | 'queue'
+  | 'circular-queue'
+  | 'graph'
+  | 'hash-table'
+  | 'heap'
+  | 'variable';
 
 export type DsaAlgorithmType =
   | 'find-max'
@@ -30,10 +54,19 @@ export type DsaAlgorithmType =
   | 'reverse-array'
   | 'quicksort'
   | 'reverse-linked-list'
+  | 'reverse-doubly-linked-list'
   | 'linked-list-middle'
   | 'bst-insert'
   | 'bst-search'
   | 'bst-find-min'
+  | 'avl-insert'
+  | 'heapify'
+  | 'dijkstra'
+  | 'bfs'
+  | 'dfs'
+  | 'sliding-window'
+  | 'dynamic-programming'
+  | 'recursion-factorial'
   | 'for-loop-traversal'
   | 'linear-search';
 
@@ -107,14 +140,12 @@ export function extractNumbers(text: string): number[] {
  * Extracts elements for stacks/queues (supports numbers or alphanumeric characters: A, B, C or 1, 2, 3)
  */
 export function extractElements(text: string): (number | string)[] {
-  // Try numbers first
-  const nums = extractNumbers(text);
-  if (nums.length > 0) return nums;
+  let elems: (number | string)[] = [];
 
-  // Check brackets
+  // 1. Check bracket match first to isolate the initial collection
   const bracketMatch = text.match(/\[([^\]]+)\]/);
   if (bracketMatch) {
-    return bracketMatch[1]
+    elems = bracketMatch[1]
       .split(/[\s,]+/)
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
@@ -122,28 +153,43 @@ export function extractElements(text: string): (number | string)[] {
         const n = Number(tok);
         return isNaN(n) ? tok : n;
       });
-  }
+  } else {
+    // 2. Try raw numbers
+    const nums = extractNumbers(text);
+    if (nums.length > 0) {
+      elems = [...nums];
+    } else {
+      // 3. Look after keyword: with, containing, has, elements, of, :
+      const keywordMatch = text.match(/(?:with|containing|elements|of|:)\s+([a-zA-Z0-9_\s,.-]+)$/i);
+      if (keywordMatch) {
+        const rawTokens = keywordMatch[1]
+          .split(/[\s,]+/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && !['and', 'items'].includes(s.toLowerCase()));
 
-  // Look after keyword: with, containing, has, elements, of, :
-  const keywordMatch = text.match(/(?:with|containing|elements|of|:)\s+([a-zA-Z0-9_\s,.-]+)$/i);
-  if (keywordMatch) {
-    const rawTokens = keywordMatch[1]
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !['and', 'items'].includes(s.toLowerCase()));
+        if (rawTokens.length > 1 && (rawTokens[0].toLowerCase() === 'a' || rawTokens[0].toLowerCase() === 'an') && rawTokens[1].length > 1) {
+          rawTokens.shift();
+        }
 
-    // Only drop leading 'a' or 'an' if it was an article before a single word
-    if (rawTokens.length > 1 && (rawTokens[0].toLowerCase() === 'a' || rawTokens[0].toLowerCase() === 'an') && rawTokens[1].length > 1) {
-      rawTokens.shift();
+        elems = rawTokens.map((tok) => {
+          const n = Number(tok);
+          return isNaN(n) ? tok : n;
+        });
+      }
     }
-
-    return rawTokens.map((tok) => {
-      const n = Number(tok);
-      return isNaN(n) ? tok : n;
-    });
   }
 
-  return [];
+  // 4. Check if prompt specifies an additional push/add/append
+  const pushMatch = text.match(/(?:push|enqueue|append|add)\s+(-?\d+|[a-zA-Z0-9_]+)/i);
+  if (pushMatch) {
+    const rawVal = pushMatch[1];
+    const val = !isNaN(Number(rawVal)) ? Number(rawVal) : rawVal;
+    if (!elems.includes(val)) {
+      elems.push(val);
+    }
+  }
+
+  return elems;
 }
 
 /**
@@ -154,6 +200,118 @@ export function parseDsaIntent(prompt: string): DsaIntent {
   const lower = p.toLowerCase();
 
   const embeddedNumbers = extractNumbers(p);
+
+  // 0. NEW ADVANCED STRUCTURES & ALGORITHMS (HIGHEST SPECIFICITY)
+  if (lower.includes('circular queue') || lower.includes('ring buffer')) {
+    const elems = extractElements(p);
+    return {
+      kind: 'create-structure',
+      structureType: 'circular-queue',
+      values: elems.length > 0 ? elems : [10, 20, 30],
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('doubly') || lower.includes('dll')) {
+    if (lower.includes('reverse')) {
+      return {
+        kind: 'solve-algorithm',
+        algorithm: 'reverse-doubly-linked-list',
+        inputArray: embeddedNumbers.length > 0 ? embeddedNumbers : undefined,
+        rawPrompt: prompt,
+      };
+    }
+    return {
+      kind: 'create-structure',
+      structureType: 'doubly-linked-list',
+      values: embeddedNumbers.length > 0 ? embeddedNumbers : [10, 20, 30],
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('circular') && (lower.includes('list') || lower.includes('linked'))) {
+    return {
+      kind: 'create-structure',
+      structureType: 'circular-linked-list',
+      values: embeddedNumbers.length > 0 ? embeddedNumbers : [1, 2, 3, 4],
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('avl')) {
+    const keyMatch = lower.match(/(?:insert|key|add)\s*(-?\d+)/i) || lower.match(/(-?\d+)/);
+    const target = keyMatch ? Number(keyMatch[1]) : 25;
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'avl-insert',
+      target: isNaN(target) ? 25 : target,
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('heap') || lower.includes('priority queue') || lower.includes('heapify')) {
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'heapify',
+      inputArray: embeddedNumbers.length > 0 ? embeddedNumbers : undefined,
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('dijkstra') || (lower.includes('shortest path') && !lower.includes('bfs'))) {
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'dijkstra',
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('bfs') || lower.includes('breadth-first') || lower.includes('breadth first')) {
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'bfs',
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('dfs') || lower.includes('depth-first') || lower.includes('depth first')) {
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'dfs',
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('sliding window') || lower.includes('max sum subarray')) {
+    const kMatch = lower.match(/(?:size|k|window)\s*(?:of|=|:)?\s*(\d+)/i);
+    const target = kMatch ? Number(kMatch[1]) : 3;
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'sliding-window',
+      inputArray: embeddedNumbers.length > 0 ? embeddedNumbers : undefined,
+      target,
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('dynamic programming') || lower.includes('knapsack') || lower.includes(' dp') || lower.startsWith('dp')) {
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'dynamic-programming',
+      rawPrompt: prompt,
+    };
+  }
+
+  if (lower.includes('recursion') || lower.includes('factorial') || lower.includes('call stack')) {
+    const nMatch = lower.match(/(?:factorial|n\s*=|n\s*is)\s*(\d+)/i) || lower.match(/(-?\d+)/);
+    const target = nMatch ? Number(nMatch[1]) : 4;
+    return {
+      kind: 'solve-algorithm',
+      algorithm: 'recursion-factorial',
+      target: isNaN(target) ? 4 : target,
+      rawPrompt: prompt,
+    };
+  }
 
   // 1. Check for Second Maximum BEFORE general Maximum
   const isSecondMax =
@@ -652,48 +810,22 @@ export function buildStoryboardFromIntent(
 
     if (intent.structureType === 'stack') {
       const items = intent.values || [1, 2, 3];
-      const code =
-        lang === 'typescript'
-          ? `const stack: (number | string)[] = [${items.map((x) => JSON.stringify(x)).join(', ')}];\nstack.push(4);\nconst popped = stack.pop();`
-          : `stack = [${items.map((x) => JSON.stringify(x)).join(', ')}]\nstack.append(4)\npopped = stack.pop()`;
+      return createDynamicStackStoryboard(items, lang, intent.rawPrompt);
+    }
 
-      const nums = items.map((x) => (typeof x === 'number' ? x : 0));
-      return {
-        id: `created-stack-${Date.now()}`,
-        title: 'Stack (LIFO)',
-        badge: 'Stack',
-        language: lang,
-        fileName: lang === 'python' ? 'stack.py' : 'stack.ts',
-        code,
-        initialPrompt: intent.rawPrompt,
-        chatExplanation: `Created stack containing [${items.join(', ')}]. Rendered array with 'top' pointer at index ${items.length - 1}.`,
-        initialState: {
-          array: {
-            id: 'dsa-main-array',
-            name: 'stack',
-            values: nums,
-            pointers: { top: Math.max(0, items.length - 1) },
-            highlights: { [Math.max(0, items.length - 1)]: 'active' },
-          },
-          linkedListNodes: {},
-          treeNodes: {},
-          variables: {
-            top: { name: 'top', value: items[items.length - 1], color: 'mint' },
-            size: { name: 'size', value: items.length, color: 'indigo' },
-          },
-        },
-        steps: [
-          {
-            id: 'step-0',
-            stepNumber: 0,
-            codeLine: 1,
-            title: 'Stack Initialized',
-            narration: `Stack has ${items.length} items. Top points to ${items[items.length - 1]}.`,
-            variables: { top: items[items.length - 1], size: items.length },
-            mutations: [],
-          },
-        ],
-      };
+    if (intent.structureType === 'circular-queue') {
+      const items = intent.values || [10, 20, 30];
+      return createDynamicCircularQueueStoryboard(items, lang, intent.rawPrompt);
+    }
+
+    if (intent.structureType === 'circular-linked-list') {
+      const nums = (intent.values || [1, 2, 3, 4]).map(Number);
+      return createDynamicCircularLinkedListStoryboard(nums, lang, intent.rawPrompt);
+    }
+
+    if (intent.structureType === 'doubly-linked-list') {
+      const nums = (intent.values || [10, 20, 30]).map(Number);
+      return createDynamicReverseDoublyLinkedListStoryboard(nums, lang, intent.rawPrompt);
     }
 
     if (intent.structureType === 'queue') {
@@ -800,6 +932,39 @@ export function buildStoryboardFromIntent(
       case 'reverse-array': {
         const nums = intent.inputArray && intent.inputArray.length > 0 ? intent.inputArray : [1, 2, 3, 4, 5];
         return createDynamicReverseArrayStoryboard(nums, lang, intent.rawPrompt);
+      }
+      case 'reverse-doubly-linked-list': {
+        const nums = intent.inputArray && intent.inputArray.length > 0 ? intent.inputArray : [10, 20, 30];
+        return createDynamicReverseDoublyLinkedListStoryboard(nums, lang, intent.rawPrompt);
+      }
+      case 'avl-insert': {
+        const val = intent.target ?? 25;
+        return createDynamicAvlTreeStoryboard(val, lang, intent.rawPrompt);
+      }
+      case 'heapify': {
+        const nums = intent.inputArray && intent.inputArray.length > 0 ? intent.inputArray : [50, 20, 30, 40, 25];
+        return createDynamicMinHeapStoryboard(nums, lang, intent.rawPrompt);
+      }
+      case 'dijkstra': {
+        return createDynamicDijkstraStoryboard(lang, intent.rawPrompt);
+      }
+      case 'bfs': {
+        return createDynamicBfsStoryboard(lang, intent.rawPrompt);
+      }
+      case 'dfs': {
+        return createDynamicDfsStoryboard(lang, intent.rawPrompt);
+      }
+      case 'sliding-window': {
+        const nums = intent.inputArray && intent.inputArray.length > 0 ? intent.inputArray : [2, 1, 5, 1, 3, 2];
+        const k = intent.target ?? 3;
+        return createDynamicSlidingWindowStoryboard(nums, k, lang, intent.rawPrompt);
+      }
+      case 'dynamic-programming': {
+        return createDynamicDpStoryboard(lang, intent.rawPrompt);
+      }
+      case 'recursion-factorial': {
+        const n = intent.target ?? 4;
+        return createDynamicRecursionStoryboard(n, lang, intent.rawPrompt);
       }
       default: {
         const nums = intent.inputArray && intent.inputArray.length > 0 ? intent.inputArray : [10, 6, 8, 9, 10];

@@ -1,4 +1,4 @@
-import type { TimelineStoryboard, TimelineStep } from '../types/timeline.ts';
+import type { TimelineStoryboard, TimelineStep, CallFrameEntity } from '../types/timeline.ts';
 import { PRESET_SCENARIOS } from '../mock/presetScenarios.ts';
 
 // =========================================================================
@@ -1410,4 +1410,663 @@ export function createDynamicReverseArrayStoryboard(
     steps,
   };
 }
+
+// =========================================================================
+// 15. DEDICATED STACK STORYBOARD
+// =========================================================================
+export function createDynamicStackStoryboard(
+  items: (number | string)[],
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Create a stack'
+): TimelineStoryboard {
+  const finalItems = items.length > 0 ? [...items] : [10, 20, 30, 40];
+  const initialItems = finalItems.length > 1 ? finalItems.slice(0, -1) : [...finalItems];
+  const lastItem = finalItems[finalItems.length - 1];
+
+  return {
+    id: 'procedural-stack-push',
+    title: 'Stack Operations (LIFO)',
+    badge: 'Stack',
+    language: lang,
+    fileName: lang === 'python' ? 'stack.py' : 'stack.ts',
+    code: `class Stack:\n    def __init__(self):\n        self.items = [${initialItems.join(', ')}]\n    def push(self, val):\n        self.items.append(val)  # Pushed ${lastItem} to TOP\n    def pop(self):\n        return self.items.pop() if self.items else None`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Created stack with items [${initialItems.join(', ')}], and pushed ${lastItem} to the top.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      variables: {
+        top: { name: 'top', value: String(lastItem), color: 'amber' },
+        size: { name: 'size', value: finalItems.length, color: 'mint' },
+      },
+      stack: {
+        id: 'dsa-main-stack',
+        name: 'stack',
+        items: [...finalItems],
+        maxCapacity: 8,
+        currentOperation: 'push',
+      },
+      array: {
+        id: 'dsa-main-array',
+        name: 'stack',
+        values: finalItems.map((x) => (typeof x === 'number' ? x : 0)),
+        pointers: { top: Math.max(0, finalItems.length - 1) },
+        highlights: { [Math.max(0, finalItems.length - 1)]: 'active' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Stack Initialized',
+        narration: `Stack initialized with ${initialItems.length} elements.`,
+        variables: { size: initialItems.length, top: String(initialItems[initialItems.length - 1]) },
+        mutations: [],
+      },
+      {
+        id: 'step-1',
+        stepNumber: 1,
+        codeLine: 5,
+        title: `Push ${lastItem} to Top`,
+        narration: `Pushed ${lastItem} onto top of the stack. Current size is ${finalItems.length}.`,
+        variables: { size: finalItems.length, top: String(lastItem) },
+        mutations: [
+          { type: 'stack', action: { kind: 'peek-stack' } },
+          { type: 'variable', action: { kind: 'set-variable', name: 'top', value: String(lastItem), color: 'amber' } },
+          { type: 'variable', action: { kind: 'set-variable', name: 'size', value: finalItems.length, color: 'mint' } },
+        ],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 16. CIRCULAR QUEUE STORYBOARD
+// =========================================================================
+export function createDynamicCircularQueueStoryboard(
+  items: (number | string)[],
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Create a circular queue'
+): TimelineStoryboard {
+  const raw = items.length > 0 ? items : [10, 20, 30];
+  const cap = 5;
+  const queueItems: (number | string | null)[] = Array.from({ length: cap }, (_, i) => raw[i] ?? null);
+
+  return {
+    id: 'procedural-circular-queue',
+    title: 'Circular Queue (Ring Buffer)',
+    badge: 'Circular Queue',
+    language: lang,
+    fileName: lang === 'python' ? 'circular_queue.py' : 'circular_queue.ts',
+    code: `class CircularQueue:\n    def __init__(self, k = ${cap}):\n        self.queue = [None] * k\n        self.front = 0\n        self.rear = ${raw.length - 1}\n        self.k = k\n    def enqueue(self, val):\n        self.rear = (self.rear + 1) % self.k\n        self.queue[self.rear] = val`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Created circular queue with capacity ${cap} and wrap-around modulo pointers.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      variables: {
+        front: { name: 'front', value: 0, color: 'mint' },
+        rear: { name: 'rear', value: raw.length - 1, color: 'purple' },
+        capacity: { name: 'capacity', value: cap, color: 'indigo' },
+      },
+      queue: {
+        id: 'dsa-main-queue',
+        name: 'Circular Queue',
+        items: queueItems,
+        front: 0,
+        rear: raw.length - 1,
+        capacity: cap,
+        isCircular: true,
+        currentOperation: 'idle',
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Circular Queue Initialized',
+        narration: `Circular buffer initialized with capacity ${cap}. Front is at 0 and rear is at ${raw.length - 1}.`,
+        variables: { front: 0, rear: raw.length - 1, capacity: cap },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 17. DOUBLY LINKED LIST REVERSAL STORYBOARD
+// =========================================================================
+export function createDynamicReverseDoublyLinkedListStoryboard(
+  rawNums: number[],
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Reverse doubly linked list'
+): TimelineStoryboard {
+  const nums = rawNums.length >= 2 ? rawNums : [10, 20, 30];
+  const nodeDict: Record<string, any> = {};
+
+  nums.forEach((val, idx) => {
+    const id = `node-${idx + 1}`;
+    nodeDict[id] = {
+      id,
+      value: val,
+      nextId: idx < nums.length - 1 ? `node-${idx + 2}` : null,
+      prevId: idx > 0 ? `node-${idx}` : null,
+      pointers: idx === 0 ? ['head'] : idx === nums.length - 1 ? ['tail'] : [],
+    };
+  });
+
+  return {
+    id: 'procedural-reverse-doubly-linked-list',
+    title: 'Reverse Doubly Linked List',
+    badge: 'Doubly Linked List',
+    language: lang,
+    fileName: lang === 'python' ? 'reverse_dll.py' : 'reverse_dll.ts',
+    code: `def reverse_doubly_linked_list(head):\n    curr = head\n    temp = None\n    while curr:\n        temp = curr.prev\n        curr.prev = curr.next\n        curr.next = temp\n        curr = curr.prev\n    return temp.prev if temp else head`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Here's an in-place reversal of a Doubly Linked List by swapping prev and next pointers.`,
+    initialState: {
+      linkedListNodes: nodeDict,
+      treeNodes: {},
+      variables: {
+        curr: { name: 'curr', value: 'node-1', color: 'indigo' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Initialize Reversal Pointers',
+        narration: 'Set curr to head node. We iterate through the list swapping prev and next pointers of each node.',
+        variables: { curr: 'node-1' },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 18. CIRCULAR LINKED LIST STORYBOARD
+// =========================================================================
+export function createDynamicCircularLinkedListStoryboard(
+  rawItems: (number | string)[],
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Create a circular linked list'
+): TimelineStoryboard {
+  const items = rawItems.length >= 2 ? rawItems : [1, 2, 3, 4];
+  const nodeDict: Record<string, any> = {};
+
+  items.forEach((val, idx) => {
+    const id = `node-${idx + 1}`;
+    nodeDict[id] = {
+      id,
+      value: val,
+      nextId: idx < items.length - 1 ? `node-${idx + 2}` : `node-1`,
+      isCircular: idx === items.length - 1,
+      pointers: idx === 0 ? ['head'] : idx === items.length - 1 ? ['tail'] : [],
+    };
+  });
+
+  return {
+    id: 'procedural-circular-linked-list',
+    title: 'Circular Linked List',
+    badge: 'Circular Linked List',
+    language: lang,
+    fileName: lang === 'python' ? 'circular_list.py' : 'circular_list.ts',
+    code: `class Node:\n    def __init__(self, val):\n        self.val = val\n        self.next = None\n# Tail node links directly back to head forming a closed cycle`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Created circular linked list where tail node links directly back to head node without terminating at NULL.`,
+    initialState: {
+      linkedListNodes: nodeDict,
+      treeNodes: {},
+      variables: {
+        head: { name: 'head', value: String(items[0]), color: 'indigo' },
+        tail: { name: 'tail', value: String(items[items.length - 1]), color: 'purple' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Circular Linked List Created',
+        narration: `Circular linked list created with ${items.length} nodes. Tail points back to head.`,
+        variables: { head: String(items[0]), tail: String(items[items.length - 1]) },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 19. AVL TREE INSERTION & ROTATION STORYBOARD
+// =========================================================================
+export function createDynamicAvlTreeStoryboard(
+  _val: number = 25,
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Insert 25 into AVL tree'
+): TimelineStoryboard {
+  return {
+    id: 'procedural-avl-tree',
+    title: 'AVL Tree Self-Balancing Insertion',
+    badge: 'AVL Tree',
+    language: lang,
+    fileName: lang === 'python' ? 'avl_tree.py' : 'avl_tree.ts',
+    code: `def insert(node, key):\n    if not node: return Node(key)\n    # Calculate balance_factor = height(left) - height(right)\n    # If balance_factor > 1: perform Right Rotation (LL)\n    # If balance_factor < -1: perform Left Rotation (RR)`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Demonstrating AVL self-balancing insertion with balance factor detection and rotation.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {
+        '30': { id: '30', value: 30, leftId: '20', rightId: '40', parentId: null, highlight: 'default', height: 2, balanceFactor: 0 },
+        '20': { id: '20', value: 20, leftId: '10', rightId: null, parentId: '30', highlight: 'default', height: 2, balanceFactor: 1 },
+        '10': { id: '10', value: 10, leftId: null, rightId: null, parentId: '20', highlight: 'default', height: 1, balanceFactor: 0 },
+        '40': { id: '40', value: 40, leftId: null, rightId: null, parentId: '30', highlight: 'default', height: 1, balanceFactor: 0 },
+      },
+      variables: {
+        balance_factor: { name: 'balance_factor', value: '+1', color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Insert Key into AVL Tree',
+        narration: 'Insert node into BST position and calculate balance factors along the ancestor path.',
+        variables: { balance_factor: '+1' },
+        mutations: [],
+      },
+      {
+        id: 'step-1',
+        stepNumber: 1,
+        codeLine: 4,
+        title: 'Right Rotation to Restore Balance',
+        narration: 'Balance factor restored to 0 via rotation.',
+        variables: { balance_factor: '0' },
+        mutations: [
+          { type: 'variable', action: { kind: 'set-variable', name: 'balance_factor', value: '0', color: 'mint' } },
+        ],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 20. MIN HEAP DUAL REPRESENTATION STORYBOARD
+// =========================================================================
+export function createDynamicMinHeapStoryboard(
+  rawNums: number[] = [],
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Build a min heap'
+): TimelineStoryboard {
+  const nums = rawNums && rawNums.length >= 3 ? rawNums : [10, 20, 30, 40, 50];
+
+  return {
+    id: 'procedural-min-heap',
+    title: 'Min Heap (Tree & Array Dual View)',
+    badge: 'Binary Heap',
+    language: lang,
+    fileName: lang === 'python' ? 'min_heap.py' : 'min_heap.ts',
+    code: `def heapify(arr, n, i):\n    smallest = i\n    left = 2 * i + 1\n    right = 2 * i + 2\n    if left < n and arr[left] < arr[smallest]: smallest = left\n    if right < n and arr[right] < arr[smallest]: smallest = right\n    if smallest != i: arr[i], arr[smallest] = arr[smallest], arr[i]`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Visualizing Min Heap with synchronized tree nodes and array indices (left = 2i+1, right = 2i+2).`,
+    initialState: {
+      array: {
+        id: 'dsa-main-array',
+        name: 'heap_arr',
+        values: [...nums],
+        pointers: { root: 0 },
+        highlights: { 0: 'active' },
+      },
+      linkedListNodes: {},
+      treeNodes: {
+        'h-0': { id: 'h-0', value: nums[0], leftId: 'h-1', rightId: 'h-2', parentId: null, highlight: 'active', heapIndex: 0 },
+        'h-1': { id: 'h-1', value: nums[1], leftId: nums.length > 3 ? 'h-3' : null, rightId: nums.length > 4 ? 'h-4' : null, parentId: 'h-0', highlight: 'default', heapIndex: 1 },
+        'h-2': { id: 'h-2', value: nums[2], leftId: null, rightId: null, parentId: 'h-0', highlight: 'default', heapIndex: 2 },
+      },
+      variables: {
+        min_elem: { name: 'min_elem', value: nums[0], color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Heapify Root Element',
+        narration: `Min heap property satisfied: parent arr[0] (${nums[0]}) is smaller than all children.`,
+        variables: { min_elem: nums[0] },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 21. GRAPH & DIJKSTRA STORYBOARD
+// =========================================================================
+export function createDynamicDijkstraStoryboard(
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Dijkstra shortest path'
+): TimelineStoryboard {
+  return {
+    id: 'procedural-dijkstra',
+    title: "Dijkstra's Shortest Path Algorithm",
+    badge: 'Graph Algorithm',
+    language: lang,
+    fileName: lang === 'python' ? 'dijkstra.py' : 'dijkstra.ts',
+    code: `import heapq\ndef dijkstra(graph, start):\n    dist = {node: float('inf') for node in graph}\n    dist[start] = 0\n    pq = [(0, start)]\n    while pq:\n        d, u = heapq.heappop(pq)\n        for v, weight in graph[u]:\n            if dist[u] + weight < dist[v]:\n                dist[v] = dist[u] + weight\n                heapq.heappush(pq, (dist[v], v))\n    return dist`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Visualizing Dijkstra's algorithm with weighted graph edges, distance variables, and priority queue exploration.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      graph: {
+        id: 'main-graph',
+        name: 'Weighted Network',
+        nodes: {
+          A: { id: 'A', label: 'A', x: 80, y: 80, distance: 0, visited: true, highlight: 'active' },
+          B: { id: 'B', label: 'B', x: 260, y: 80, distance: 5, visited: false },
+          C: { id: 'C', label: 'C', x: 80, y: 240, distance: 2, visited: false },
+          D: { id: 'D', label: 'D', x: 260, y: 240, distance: '∞', visited: false },
+        },
+        edges: [
+          { id: 'e-AB', from: 'A', to: 'B', weight: 5, directed: false },
+          { id: 'e-AC', from: 'A', to: 'C', weight: 2, directed: false },
+          { id: 'e-CD', from: 'C', to: 'D', weight: 4, directed: false },
+          { id: 'e-BD', from: 'B', to: 'D', weight: 3, directed: false },
+        ],
+      },
+      variables: {
+        current: { name: 'current', value: 'A', color: 'indigo' },
+        dist_A: { name: 'dist_A', value: 0, color: 'mint' },
+        dist_C: { name: 'dist_C', value: 2, color: 'amber' },
+        dist_B: { name: 'dist_B', value: 5, color: 'amber' },
+        dist_D: { name: 'dist_D', value: '∞', color: 'purple' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 4,
+        title: 'Start Dijkstra at Source Node A',
+        narration: 'Set distance to source A = 0 and all other nodes to infinity.',
+        variables: { current: 'A', dist_A: 0 },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 22. BFS & DFS STORYBOARD (REUSES QUEUE / STACK)
+// =========================================================================
+export function createDynamicBfsStoryboard(
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Run BFS on graph'
+): TimelineStoryboard {
+  return {
+    id: 'procedural-bfs',
+    title: 'Breadth-First Search (BFS)',
+    badge: 'Graph Traversal',
+    language: lang,
+    fileName: lang === 'python' ? 'bfs.py' : 'bfs.ts',
+    code: `from collections import deque\ndef bfs(graph, start):\n    visited = set([start])\n    queue = deque([start])\n    while queue:\n        node = queue.popleft()\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                visited.add(neighbor)\n                queue.append(neighbor)`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `BFS exploration using Queue component for the frontier and visited sets.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      graph: {
+        id: 'bfs-graph',
+        name: 'Graph',
+        nodes: {
+          A: { id: 'A', label: 'A', x: 80, y: 80, visited: true, highlight: 'active' },
+          B: { id: 'B', label: 'B', x: 240, y: 80, visited: false },
+          C: { id: 'C', label: 'C', x: 80, y: 220, visited: false },
+        },
+        edges: [
+          { id: 'e-1', from: 'A', to: 'B' },
+          { id: 'e-2', from: 'A', to: 'C' },
+        ],
+      },
+      queue: {
+        id: 'bfs-queue',
+        name: 'BFS Queue',
+        items: ['A', 'B', 'C'],
+        front: 0,
+        rear: 2,
+      },
+      variables: {
+        visited: { name: 'visited', value: '{A, B, C}', color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 4,
+        title: 'Enqueue Start Node',
+        narration: 'Push start node into the BFS queue and mark visited.',
+        variables: { visited: '{A}' },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+export function createDynamicDfsStoryboard(
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Run DFS on graph'
+): TimelineStoryboard {
+  return {
+    id: 'procedural-dfs',
+    title: 'Depth-First Search (DFS)',
+    badge: 'Graph Traversal',
+    language: lang,
+    fileName: lang === 'python' ? 'dfs.py' : 'dfs.ts',
+    code: `def dfs(graph, node, visited=None):\n    if visited is None: visited = set()\n    visited.add(node)\n    for neighbor in graph[node]:\n        if neighbor not in visited:\n            dfs(graph, neighbor, visited)`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `DFS exploration using Stack component for active path back-tracking.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      graph: {
+        id: 'dfs-graph',
+        name: 'Graph',
+        nodes: {
+          A: { id: 'A', label: 'A', x: 80, y: 80, visited: true, highlight: 'active' },
+          B: { id: 'B', label: 'B', x: 240, y: 80, visited: false },
+          C: { id: 'C', label: 'C', x: 80, y: 220, visited: false },
+        },
+        edges: [
+          { id: 'e-1', from: 'A', to: 'B' },
+          { id: 'e-2', from: 'A', to: 'C' },
+        ],
+      },
+      stack: {
+        id: 'dfs-stack',
+        name: 'DFS Call Stack',
+        items: ['A'],
+      },
+      variables: {
+        visited: { name: 'visited', value: '{A}', color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 3,
+        title: 'Visit Node A',
+        narration: 'Push node A onto traversal stack.',
+        variables: { visited: '{A}' },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 23. SLIDING WINDOW STORYBOARD
+// =========================================================================
+export function createDynamicSlidingWindowStoryboard(
+  rawNums: number[] = [],
+  k: number = 3,
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Sliding window max sum'
+): TimelineStoryboard {
+  const nums = rawNums && rawNums.length >= k ? rawNums : [2, 1, 5, 1, 3, 2];
+  let windowSum = 0;
+  for (let i = 0; i < k; i++) windowSum += nums[i];
+
+  return {
+    id: 'procedural-sliding-window',
+    title: 'Sliding Window (Subarray Size k)',
+    badge: 'Sliding Window',
+    language: lang,
+    fileName: lang === 'python' ? 'sliding_window.py' : 'sliding_window.ts',
+    code: `def max_sub_array_of_size_k(k, arr):\n    max_sum = 0\n    window_sum = sum(arr[:k])\n    for window_end in range(k, len(arr)):\n        window_sum += arr[window_end] - arr[window_end - k]\n        max_sum = max(max_sum, window_sum)\n    return max_sum`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Visualizing sliding window of fixed size ${k} maintaining a running windowSum.`,
+    initialState: {
+      array: {
+        id: 'dsa-main-array',
+        name: 'arr',
+        values: [...nums],
+        pointers: { left: 0, right: k - 1 },
+        highlights: { 0: 'active', 1: 'active', 2: 'active' },
+      },
+      linkedListNodes: {},
+      treeNodes: {},
+      variables: {
+        window_sum: { name: 'window_sum', value: windowSum, color: 'mint' },
+        k: { name: 'k', value: k, color: 'indigo' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 3,
+        title: `Initialize Window [0..${k - 1}]`,
+        narration: `Compute initial window sum for first ${k} elements: ${windowSum}.`,
+        variables: { window_sum: windowSum },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+// =========================================================================
+// 24. DYNAMIC PROGRAMMING & RECURSION STORYBOARDS
+// =========================================================================
+export function createDynamicDpStoryboard(
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = '0/1 Knapsack DP'
+): TimelineStoryboard {
+  return {
+    id: 'procedural-dp-table',
+    title: 'Dynamic Programming (0/1 Knapsack)',
+    badge: 'Dynamic Programming',
+    language: lang,
+    fileName: lang === 'python' ? 'knapsack_dp.py' : 'knapsack_dp.ts',
+    code: `def knapsack(weights, values, W):\n    n = len(weights)\n    dp = [[0] * (W + 1) for _ in range(n + 1)]\n    for i in range(1, n + 1):\n        for w in range(1, W + 1):\n            if weights[i-1] <= w:\n                dp[i][w] = max(values[i-1] + dp[i-1][w-weights[i-1]], dp[i-1][w])\n            else:\n                dp[i][w] = dp[i-1][w]\n    return dp[n][W]`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Visualizing 2D Dynamic Programming table with state dependencies and optimal subproblem caching.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      dpTable: {
+        id: 'main-dp',
+        name: 'Knapsack DP Table',
+        rows: ['item 0', 'item 1', 'item 2'],
+        cols: ['w=0', 'w=1', 'w=2', 'w=3'],
+        cells: [
+          [0, 0, 0, 0],
+          [0, 10, 10, 10],
+          [0, 10, 15, 25],
+        ],
+        activeCell: { row: 2, col: 3 },
+      },
+      variables: {
+        'dp[2][3]': { name: 'dp[2][3]', value: 25, color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 5,
+        title: 'Calculate Optimal Substructure',
+        narration: 'Compute dp[i][w] by taking maximum of including or excluding item.',
+        variables: { 'dp[2][3]': 25 },
+        mutations: [],
+      },
+    ],
+  };
+}
+
+export function createDynamicRecursionStoryboard(
+  n: number = 4,
+  lang: 'python' | 'typescript' | 'cpp' = 'python',
+  rawPrompt: string = 'Factorial recursion'
+): TimelineStoryboard {
+  const targetN = Math.max(1, Math.min(n || 4, 7));
+  const frames: CallFrameEntity[] = [];
+  const stackItems: string[] = [];
+  for (let i = targetN; i >= 1; i--) {
+    frames.push({
+      id: `f-${i}`,
+      functionName: `fact(${i})`,
+      args: { n: i },
+      returnValue: i === 1 ? 1 : undefined,
+      status: i === 1 ? 'returning' : 'active',
+    });
+    stackItems.push(`fact(${i})`);
+  }
+
+  return {
+    id: 'procedural-recursion',
+    title: `Recursion Call Stack (Factorial ${targetN})`,
+    badge: 'Recursion',
+    language: lang,
+    fileName: lang === 'python' ? 'factorial.py' : 'factorial.ts',
+    code: `def factorial(n):\n    if n <= 1: return 1\n    return n * factorial(n - 1)  # Push call frame`,
+    initialPrompt: rawPrompt,
+    chatExplanation: `Visualizing recursive function calls with active call-stack frames and returns.`,
+    initialState: {
+      linkedListNodes: {},
+      treeNodes: {},
+      callStack: {
+        id: 'main-call-stack',
+        frames,
+      },
+      stack: {
+        id: 'dsa-main-stack',
+        name: 'Call Stack',
+        items: stackItems,
+      },
+      variables: {
+        active_frame: { name: 'active_frame', value: 'fact(1)', color: 'mint' },
+      },
+    },
+    steps: [
+      {
+        id: 'step-0',
+        stepNumber: 0,
+        codeLine: 2,
+        title: 'Base Case Reached: fact(1)',
+        narration: 'Base case n=1 reached. Begins unwinding call stack by returning 1.',
+        variables: { active_frame: 'fact(1)' },
+        mutations: [],
+      },
+    ],
+  };
+}
+
 

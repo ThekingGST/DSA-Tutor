@@ -33,6 +33,8 @@ export class LinkedListNodeShapeUtil extends BaseBoxShapeUtil<any> {
     nodeId: T.string,
     value: T.any,
     nextId: T.nullable(T.string),
+    prevId: T.optional(T.nullable(T.string)),
+    isCircular: T.optional(T.boolean),
     pointers: T.arrayOf(T.string),
     highlight: T.string,
   };

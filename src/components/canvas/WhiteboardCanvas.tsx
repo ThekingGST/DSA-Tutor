@@ -20,6 +20,9 @@ import {
   calculateTreeNodeDimensions,
 } from '../../canvas/shapes/panelLayoutLogic';
 
+import { StackShapeUtil } from '../../canvas/shapes/StackShapeUtil';
+import { QueueShapeUtil } from '../../canvas/shapes/QueueShapeUtil';
+
 interface WhiteboardCanvasProps {
   currentStep: TimelineStep;
   scenarioId: string;
@@ -34,6 +37,8 @@ const customShapeUtils = [
   BSTNodeShapeUtil,
   LoopTrackerShapeUtil,
   VariableCardsShapeUtil,
+  StackShapeUtil,
+  QueueShapeUtil,
 ];
 
 /**
@@ -463,6 +468,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
               h: adaptedListDims.h,
               value: node.value,
               nextId: node.nextId,
+              prevId: node.prevId,
+              isCircular: node.isCircular,
               pointers: [...node.pointers],
               highlight: node.pointers.includes('curr')
                 ? 'active'
@@ -483,6 +490,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
               nodeId: node.id,
               value: node.value,
               nextId: node.nextId,
+              prevId: node.prevId,
+              isCircular: node.isCircular,
               pointers: [...node.pointers],
               highlight: node.pointers.includes('curr') ? 'active' : 'default',
             },
@@ -636,6 +645,83 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const existing = editor.getShape(varShapeId);
       if (existing) editor.deleteShape(varShapeId);
     }
+
+    // 6. Synchronize Stack Shape
+    const stackShapeId = 'shape:dsa-main-stack' as any;
+    if (canvasState.stack) {
+      const existing = editor.getShape(stackShapeId);
+      const stringifiedHighlights = Object.fromEntries(
+        Object.entries(canvasState.stack.highlights || {}).map(([k, v]) => [String(k), String(v)])
+      );
+      const stackProps = {
+        w: 320,
+        h: Math.max(340, canvasState.stack.items.length * 36 + 140),
+        name: canvasState.stack.name || 'stack',
+        items: [...canvasState.stack.items],
+        maxCapacity: canvasState.stack.maxCapacity || 8,
+        highlights: stringifiedHighlights,
+        currentOperation: canvasState.stack.currentOperation || 'idle',
+      };
+
+      if (existing) {
+        editor.updateShape({
+          id: stackShapeId,
+          type: 'dsa-stack',
+          props: stackProps,
+        } as any);
+      } else {
+        editor.createShape({
+          id: stackShapeId,
+          type: 'dsa-stack',
+          x: 120,
+          y: 80,
+          props: stackProps,
+        } as any);
+      }
+    } else {
+      const existing = editor.getShape(stackShapeId);
+      if (existing) editor.deleteShape(stackShapeId);
+    }
+
+    // 7. Synchronize Queue Shape
+    const queueShapeId = 'shape:dsa-main-queue' as any;
+    if (canvasState.queue) {
+      const existing = editor.getShape(queueShapeId);
+      const stringifiedHighlights = Object.fromEntries(
+        Object.entries(canvasState.queue.highlights || {}).map(([k, v]) => [String(k), String(v)])
+      );
+      const queueProps = {
+        w: Math.max(480, (canvasState.queue.items.length + 1) * 72 + 80),
+        h: 260,
+        name: canvasState.queue.name || 'queue',
+        items: [...canvasState.queue.items],
+        front: canvasState.queue.front,
+        rear: canvasState.queue.rear,
+        capacity: canvasState.queue.capacity || 6,
+        isCircular: !!canvasState.queue.isCircular,
+        highlights: stringifiedHighlights,
+        currentOperation: canvasState.queue.currentOperation || 'idle',
+      };
+
+      if (existing) {
+        editor.updateShape({
+          id: queueShapeId,
+          type: 'dsa-queue',
+          props: queueProps,
+        } as any);
+      } else {
+        editor.createShape({
+          id: queueShapeId,
+          type: 'dsa-queue',
+          x: 100,
+          y: 90,
+          props: queueProps,
+        } as any);
+      }
+    } else {
+      const existing = editor.getShape(queueShapeId);
+      if (existing) editor.deleteShape(queueShapeId);
+    }
   }, [
     editor,
     scenarioId,
@@ -647,6 +733,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     loopEntity,
     variableCards,
     canvasState.variables,
+    canvasState.stack,
+    canvasState.queue,
     changedVars,
   ]);
 

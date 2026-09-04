@@ -9,6 +9,8 @@ export interface LinkedListNodeShapeProps {
   nodeId: string;
   value: number | string;
   nextId: string | null;
+  prevId?: string | null;
+  isCircular?: boolean;
   pointers: string[];
   highlight: string;
 }

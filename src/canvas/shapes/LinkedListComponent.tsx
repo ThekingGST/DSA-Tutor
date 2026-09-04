@@ -100,8 +100,28 @@ export const LinkedListComponent: React.FC<LinkedListComponentProps> = ({ shape,
           </div>
         )}
 
-        {/* Two-Compartment Card: [ data | next ●-> ] */}
+        {/* Two or Three Compartment Card */}
         <div className="w-full flex items-center justify-center rounded-xl border-2 border-slate-300 bg-white overflow-hidden shadow-inner shrink-0">
+          {/* Optional Prev Pointer Compartment for Doubly Linked List */}
+          {shape.props.prevId !== undefined && (
+            <div
+              title="Previous node port"
+              className="w-12 h-12 flex flex-col items-center justify-center bg-slate-50 border-r-2 border-slate-200 transition-colors shrink-0"
+            >
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-bold text-slate-400">←</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full border-2 border-white shadow-xs ${
+                    shape.props.prevId ? 'bg-amber-500' : 'bg-slate-300'
+                  }`}
+                />
+              </div>
+              <span className="text-[8px] font-mono text-slate-400 font-semibold mt-0.5">
+                {shape.props.prevId ? shape.props.prevId : 'null'}
+              </span>
+            </div>
+          )}
+
           {/* Value Compartment */}
           <div
             onDoubleClick={(e) => {
@@ -110,7 +130,7 @@ export const LinkedListComponent: React.FC<LinkedListComponentProps> = ({ shape,
               setEditVal(String(value));
             }}
             title="Double-click to edit value"
-            className="flex-1 min-w-[56px] h-12 flex items-center justify-center border-r-2 border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors px-2"
+            className="flex-1 min-w-[50px] h-12 flex items-center justify-center border-r-2 border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors px-2"
           >
             {isEditing ? (
               <input
@@ -123,7 +143,7 @@ export const LinkedListComponent: React.FC<LinkedListComponentProps> = ({ shape,
                   if (e.key === 'Enter') handleCommitEdit();
                   if (e.key === 'Escape') setIsEditing(false);
                 }}
-                className="w-14 text-center font-handwriting text-xl font-bold text-indigo-700 bg-transparent border-b-2 border-indigo-600 focus:outline-hidden"
+                className="w-12 text-center font-handwriting text-xl font-bold text-indigo-700 bg-transparent border-b-2 border-indigo-600 focus:outline-hidden"
               />
             ) : (
               <span className="font-handwriting text-2xl font-bold text-slate-800 truncate">
@@ -136,17 +156,17 @@ export const LinkedListComponent: React.FC<LinkedListComponentProps> = ({ shape,
           <div
             onClick={handleToggleNext}
             title="Click next port to detach/rewire"
-            className="w-14 h-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-indigo-50 transition-colors cursor-pointer group shrink-0"
+            className="w-12 h-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-indigo-50 transition-colors cursor-pointer group shrink-0"
           >
             <div className="flex items-center gap-1">
               <span
-                className={`w-3 h-3 rounded-full border-2 border-white shadow-xs transition-transform group-hover:scale-125 ${
+                className={`w-2.5 h-2.5 rounded-full border-2 border-white shadow-xs transition-transform group-hover:scale-125 ${
                   nextId ? 'bg-indigo-600' : 'bg-slate-300'
                 }`}
               />
               <span className="text-xs font-bold text-slate-400 group-hover:text-indigo-600">→</span>
             </div>
-            <span className="text-[9px] font-mono text-slate-400 font-semibold mt-0.5">
+            <span className="text-[8px] font-mono text-slate-400 font-semibold mt-0.5">
               {nextId ? nextId : 'null'}
             </span>
           </div>
@@ -155,6 +175,9 @@ export const LinkedListComponent: React.FC<LinkedListComponentProps> = ({ shape,
         {/* Node ID Badge Subscript */}
         <div className="w-full flex items-center justify-between text-[10px] font-mono text-slate-400 px-1 shrink-0">
           <span>id: {nodeId}</span>
+          {shape.props.prevId !== undefined ? (
+            <span className="text-[9px] text-amber-600 font-medium">prev: {shape.props.prevId ?? 'null'}</span>
+          ) : null}
           <span className="text-[9px] text-indigo-500 font-medium">next: {nextId ?? 'null'}</span>
         </div>
       </div>
