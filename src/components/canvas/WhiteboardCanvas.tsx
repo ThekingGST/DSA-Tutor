@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Tldraw, track, useEditor } from '@tldraw/tldraw';
 import type { Editor, TLComponents } from '@tldraw/tldraw';
 import type { TimelineStep } from '../../types/studio';
@@ -287,6 +287,99 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   const treeNodes = canvasState.treeNodes;
   const loopEntity = canvasState.loop;
 
+  // Track previous variable values to trigger smooth pulse animations on value change
+  const [varSnapshot, setVarSnapshot] = useState<{
+    prev: Record<string, string | number>;
+    curr: Record<string, string | number>;
+  }>({ prev: {}, curr: {} });
+
+  const currentVarMap = useMemo(() => {
+    const map: Record<string, string | number> = {};
+    for (const card of variableCards) {
+      map[card.name] = card.value;
+    }
+    return map;
+  }, [variableCards]);
+
+  const hasVarChanged =
+    Object.keys(currentVarMap).some((k) => currentVarMap[k] !== varSnapshot.curr[k]) ||
+    Object.keys(varSnapshot.curr).some((k) => currentVarMap[k] !== varSnapshot.curr[k]);
+
+  if (hasVarChanged) {
+    setVarSnapshot({
+      prev: varSnapshot.curr,
+      curr: currentVarMap,
+    });
+  }
+
+  const changedVars = useMemo(() => {
+    const changed = new Set<string>();
+    for (const card of variableCards) {
+      if (varSnapshot.prev[card.name] !== undefined && varSnapshot.prev[card.name] !== card.value) {
+        changed.add(card.name);
+      }
+    }
+    return changed;
+  }, [variableCards, varSnapshot]);
+
+  // Draggable state for On-Canvas Variable Cards
+  const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
+  const [isDraggingCards, setIsDraggingCards] = useState(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
+    startX: 0,
+    startY: 0,
+    initX: 48,
+    initY: 0,
+  });
+
+  const handleCardsMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return;
+    setIsDraggingCards(true);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initX: cardPos ? cardPos.x : rect.left,
+      initY: cardPos ? cardPos.y : rect.top,
+    };
+  };
+
+  useEffect(() => {
+    if (!isDraggingCards) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const dx = e.clientX - dragStartRef.current.startX;
+      const dy = e.clientY - dragStartRef.current.startY;
+      setCardPos({
+        x: Math.max(10, dragStartRef.current.initX + dx),
+        y: Math.max(10, dragStartRef.current.initY + dy),
+      });
+    };
+    const handleMouseUp = () => {
+      setIsDraggingCards(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingCards]);
+
+  // When switching presets, clear previous shapes so new scenario initializes cleanly
+  const prevScenarioRef = useRef(scenarioId);
+  useEffect(() => {
+    if (!editor) return;
+    if (prevScenarioRef.current !== scenarioId) {
+      prevScenarioRef.current = scenarioId;
+      const allShapes = editor.getCurrentPageShapeIds();
+      for (const id of allShapes) {
+        if (String(id).startsWith('shape:dsa-')) {
+          editor.deleteShape(id);
+        }
+      }
+    }
+  }, [editor, scenarioId]);
+
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor);
     if (typeof window !== 'undefined') {
@@ -312,6 +405,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   }, [scenarioId, treeNodes]);
 
   // Synchronize TLDraw shape canvas with pure reducer state
+  // PERSISTENCE GUARANTEE: Never overwrite x and y on existing shapes so user drag positions persist across steps!
   useEffect(() => {
     if (!editor) return;
 
@@ -325,14 +419,23 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const targetWidth = Math.max(540, (arrayEntity.values.length + 1) * 75 + 80);
 
       if (existing) {
+        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
+        const existingProps = (existing as any).props || {};
+        const prevLen = existingProps.values?.length || 0;
+        const nextLen = arrayEntity.values.length;
+
+        let preservedWidth = typeof existingProps.w === 'number' ? existingProps.w : targetWidth;
+        if (nextLen > prevLen && preservedWidth < targetWidth) {
+          preservedWidth = targetWidth;
+        }
+        const preservedHeight = typeof existingProps.h === 'number' ? Math.max(existingProps.h, 240) : 240;
+
         editor.updateShape({
           id: arrayShapeId,
           type: 'dsa-array',
-          x: 60,
-          y: 70,
           props: {
-            w: targetWidth,
-            h: 230,
+            w: preservedWidth,
+            h: preservedHeight,
             values: [...arrayEntity.values],
             pointers: { ...arrayEntity.pointers },
             highlights: stringifiedHighlights,
@@ -346,7 +449,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           y: 70,
           props: {
             w: targetWidth,
-            h: 230,
+            h: 240,
             name: arrayEntity.name || 'arr',
             values: [...arrayEntity.values],
             pointers: { ...arrayEntity.pointers },
@@ -369,11 +472,10 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         const existing = editor.getShape(shapeId);
 
         if (existing) {
+          // Do NOT pass x and y to preserve user positioning across steps
           editor.updateShape({
             id: shapeId,
             type: 'dsa-linked-node',
-            x: pos.x,
-            y: pos.y,
             props: {
               value: node.value,
               nextId: node.nextId,
@@ -423,11 +525,10 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         const existing = editor.getShape(shapeId);
 
         if (existing) {
+          // Do NOT pass x and y to preserve user positioning across steps
           editor.updateShape({
             id: shapeId,
             type: 'dsa-tree-node',
-            x: pos.x,
-            y: pos.y,
             props: {
               value: node.value,
               leftId: node.leftId,
@@ -470,17 +571,23 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     if (loopEntity) {
       const existing = editor.getShape(loopShapeId);
       const loopProps = entityToLoopShapeProps(loopEntity, 380, 148);
-      // Clean positioning on canvas
       const loopX = scenarioId === 'quicksort-partition' ? 620 : 80;
       const loopY = scenarioId === 'quicksort-partition' ? 70 : 340;
 
       if (existing) {
+        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
+        const existingProps = (existing as any).props || {};
+        const preservedW = typeof existingProps.w === 'number' ? existingProps.w : loopProps.w;
+        const preservedH = typeof existingProps.h === 'number' ? existingProps.h : loopProps.h;
+
         editor.updateShape({
           id: loopShapeId,
           type: 'dsa-loop-tracker',
-          x: loopX,
-          y: loopY,
-          props: { ...loopProps },
+          props: {
+            ...loopProps,
+            w: preservedW,
+            h: preservedH,
+          },
         } as any);
       } else {
         editor.createShape({
@@ -522,13 +629,28 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         />
       </div>
 
-      {/* On-Canvas Sketched Variable Cards (Floating Semantic Overlay Matching Design) */}
-      <div className="absolute bottom-28 left-12 z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-xs p-4 rounded-2xl border border-slate-200 shadow-xl max-w-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase tracking-wider">
-            On-Canvas Variable Cards:
-          </span>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700">
+      {/* On-Canvas Sketched Variable Cards (Floating Draggable Semantic Overlay Matching Design) */}
+      <div
+        onMouseDown={handleCardsMouseDown}
+        style={
+          cardPos
+            ? { left: `${cardPos.x}px`, top: `${cardPos.y}px`, bottom: 'auto' }
+            : undefined
+        }
+        className={`z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-md p-4 rounded-2xl border-2 border-slate-200 shadow-xl max-w-xl transition-shadow duration-200 cursor-grab active:cursor-grabbing ${
+          cardPos ? 'fixed' : 'absolute bottom-28 left-12'
+        } ${isDraggingCards ? 'shadow-2xl ring-2 ring-indigo-400 scale-[1.02]' : ''}`}
+      >
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase tracking-wider">
+              On-Canvas Variable Cards:
+            </span>
+            <span className="text-[9px] font-mono text-slate-400">
+              (drag to move)
+            </span>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
             Reactive State
           </span>
         </div>
@@ -536,10 +658,16 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           {variableCards.map((card) => {
             const isMint = card.color === 'mint';
             const isAmber = card.color === 'amber';
+            const hasChanged = changedVars.has(card.name);
+
             return (
               <div
                 key={card.name}
-                className={`px-4 py-2 rounded-xl border-2 shadow-xs transition-transform duration-200 hover:scale-105 cursor-pointer ${
+                className={`px-4 py-2 rounded-xl border-2 shadow-xs transition-all duration-300 hover:scale-105 cursor-pointer ${
+                  hasChanged
+                    ? 'ring-3 ring-amber-400 scale-110 shadow-lg'
+                    : ''
+                } ${
                   isMint
                     ? 'border-emerald-500/80 bg-emerald-50/80 text-emerald-800'
                     : isAmber
@@ -547,7 +675,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
                     : 'border-indigo-400/80 bg-indigo-50/80 text-indigo-900'
                 }`}
               >
-                <span className="font-handwriting text-xl font-bold">
+                <span className="font-handwriting text-xl font-bold transition-all duration-200">
                   {card.name} = {String(card.value)}
                 </span>
               </div>

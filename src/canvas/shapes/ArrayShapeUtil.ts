@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseBoxShapeUtil } from '@tldraw/tldraw';
+import { BaseBoxShapeUtil, resizeBox } from '@tldraw/tldraw';
 import type { TLBaseShape } from '@tldraw/tldraw';
 import { T } from '@tldraw/validate';
 import { ArrayComponent } from './ArrayComponent.tsx';
@@ -18,6 +18,15 @@ export type IArrayShape = TLBaseShape<
 
 export class ArrayShapeUtil extends BaseBoxShapeUtil<any> {
   static override type = 'dsa-array' as const;
+
+  override canResize = () => true;
+
+  override onResize(shape: IArrayShape, info: any) {
+    return resizeBox(shape as any, info, {
+      minWidth: 360,
+      minHeight: 180,
+    });
+  }
 
   static override props = {
     w: T.number,

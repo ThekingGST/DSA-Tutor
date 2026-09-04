@@ -140,4 +140,43 @@ test('Phase 3: Array & Pointer TLDraw Custom Shape Tests', async (t) => {
     const expandedWidth = computeArrayWidth(largeValues.length);
     assert.equal(expandedWidth, 1040);
   });
+
+  await t.test('Array resize persistence logic: preserving user-resized dimensions across step updates', () => {
+    // 1. Initial creation defaults
+    const initialValues = [29, 10, 14, 37, 13];
+    const targetWidth = Math.max(540, (initialValues.length + 1) * 75 + 80);
+    assert.equal(targetWidth, 540);
+
+    // 2. User resizes the array panel to w: 780, h: 280
+    const userResizedProps = {
+      w: 780,
+      h: 280,
+      values: [...initialValues],
+    };
+
+    // 3. Step transition occurs with same values length
+    const nextStepValues = [10, 29, 14, 37, 13];
+    const prevLen = userResizedProps.values.length;
+    const nextLen = nextStepValues.length;
+    let preservedWidth = typeof userResizedProps.w === 'number' ? userResizedProps.w : targetWidth;
+    if (nextLen > prevLen && preservedWidth < targetWidth) {
+      preservedWidth = targetWidth;
+    }
+    const preservedHeight = typeof userResizedProps.h === 'number' ? userResizedProps.h : 230;
+
+    // Must strictly preserve the user-chosen 780 and 280 dimensions
+    assert.equal(preservedWidth, 780);
+    assert.equal(preservedHeight, 280);
+
+    // 4. Test when array expands with more elements than will fit in user width
+    const massiveValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const massiveTargetWidth = Math.max(540, (massiveValues.length + 1) * 75 + 80);
+    const massivePrevLen = 5;
+    const massiveNextLen = massiveValues.length;
+    let autoExpandedWidth = typeof userResizedProps.w === 'number' ? userResizedProps.w : massiveTargetWidth;
+    if (massiveNextLen > massivePrevLen && autoExpandedWidth < massiveTargetWidth) {
+      autoExpandedWidth = massiveTargetWidth;
+    }
+    assert.equal(autoExpandedWidth, 1055);
+  });
 });

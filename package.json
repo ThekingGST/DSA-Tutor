@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cleanup:browsers": "bash scripts/cleanup-browsers.sh"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

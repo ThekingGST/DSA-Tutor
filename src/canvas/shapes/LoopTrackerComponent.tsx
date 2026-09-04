@@ -135,9 +135,17 @@ export const LoopTrackerComponent: React.FC<LoopTrackerComponentProps> = ({
         </div>
       </div>
 
+      {/* Continuous Animated Progress Bar */}
+      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden my-0.5">
+        <div
+          className="h-full bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 rounded-full transition-all duration-500 ease-out shadow-xs"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       {/* Middle Row: Real-Time Condition Evaluation Banner */}
       <div
-        className={`px-3 py-1.5 rounded-xl border flex items-center justify-between text-xs transition-colors ${
+        className={`px-3 py-1.5 rounded-xl border flex items-center justify-between text-xs transition-all duration-300 ${
           evalState === 'true'
             ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900'
             : evalState === 'false'

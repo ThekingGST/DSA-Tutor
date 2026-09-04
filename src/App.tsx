@@ -20,6 +20,47 @@ export const App: React.FC = () => {
     return true;
   });
 
+  // Sidebar width state for flexible array space resizing
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dsa_sidebar_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 280 && parsed <= 900) return parsed;
+      }
+    }
+    return 400;
+  });
+  const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+
+  // Resize handler for splitter
+  const startResizing = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsResizingSidebar(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizingSidebar) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const maxWidth = Math.max(480, Math.floor(window.innerWidth * 0.55));
+      const newWidth = Math.min(Math.max(280, e.clientX), maxWidth);
+      setSidebarWidth(newWidth);
+    };
+
+    const handlePointerUp = () => {
+      setIsResizingSidebar(false);
+      localStorage.setItem('dsa_sidebar_width', String(sidebarWidth));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isResizingSidebar, sidebarWidth]);
+
   // Scenario state initialized with URL params if provided
   const [currentScenario, setCurrentScenario] = useState<PresetScenario>(() => {
     if (typeof window !== 'undefined') {
@@ -181,17 +222,22 @@ export const App: React.FC = () => {
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
       />
 
-      {/* Main Studio Split View (35% Left / 65% Right or 100% Whiteboard) */}
+      {/* Main Studio Split View (Resizable Left Code Panel / Right Whiteboard Canvas) */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Studio Panel: Code Editor & Prompt Bar (collapsible) */}
+        {/* Left Studio Panel: Code Editor & Prompt Bar (collapsible & resizable) */}
         <section
-          className={`h-full flex flex-col border-r border-slate-800/80 bg-[#0d1322] shrink-0 z-10 transition-all duration-300 ease-in-out ${
+          style={{
+            width: isSidebarOpen ? `${sidebarWidth}px` : '0px',
+          }}
+          className={`h-full flex flex-col border-r border-slate-800/80 bg-[#0d1322] shrink-0 z-10 ${
+            isResizingSidebar ? 'transition-none select-none' : 'transition-all duration-300 ease-in-out'
+          } ${
             isSidebarOpen
-              ? 'w-[35%] min-w-[360px] max-w-[480px] opacity-100'
-              : 'w-0 min-w-0 max-w-0 opacity-0 overflow-hidden pointer-events-none border-none'
+              ? 'opacity-100 min-w-[280px]'
+              : 'min-w-0 max-w-0 opacity-0 overflow-hidden pointer-events-none border-none'
           }`}
         >
-          {/* Code Panel with Line Highlighting & Live Variable Watcher */}
+          {/* Code Panel with Line Highlighting */}
           <div className="flex-1 min-h-0 flex flex-col">
             <CodePanel
               code={currentScenario.code}
@@ -209,6 +255,23 @@ export const App: React.FC = () => {
             onQuickCommand={(cmd) => handlePromptSubmit(cmd)}
           />
         </section>
+
+        {/* Draggable Divider to resize array canvas space vs code space */}
+        {isSidebarOpen && (
+          <div
+            onPointerDown={startResizing}
+            onDoubleClick={() => {
+              setSidebarWidth(400);
+              localStorage.setItem('dsa_sidebar_width', '400');
+            }}
+            title="Drag to resize code & whiteboard array space (Double-click to reset)"
+            className={`w-1.5 hover:w-2 -ml-0.5 cursor-col-resize z-20 transition-all flex items-center justify-center group select-none shrink-0 ${
+              isResizingSidebar ? 'bg-indigo-500 w-2' : 'bg-slate-800/60 hover:bg-indigo-500/60'
+            }`}
+          >
+            <div className="w-0.5 h-7 rounded-full bg-slate-600 group-hover:bg-indigo-300" />
+          </div>
+        )}
 
         {/* Right Studio Panel: Whiteboard Canvas + Timeline Player HUD */}
         <section className="flex-1 relative h-full overflow-hidden bg-slate-900">

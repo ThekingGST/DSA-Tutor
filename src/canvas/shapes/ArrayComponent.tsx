@@ -93,13 +93,24 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
     e.dataTransfer.dropEffect = 'move';
   };
 
-  // Separate pre-array pointers (e.g. i = -1) and in-bounds/post-bounds pointers
-  const prePointers = Object.entries(pointers).filter(([, pIdx]) => Number(pIdx) < 0);
+  // Compute pointer positioning along continuous sliding track
+  const pointerList = Object.entries(pointers).map(([name, slotIdx]) => ({
+    name,
+    slotIdx: Number(slotIdx),
+  }));
+
+  // Group pointers per slot index for clean staggering
+  const pointersBySlot = new Map<number, string[]>();
+  for (const { name, slotIdx } of pointerList) {
+    const list = pointersBySlot.get(slotIdx) || [];
+    list.push(name);
+    pointersBySlot.set(slotIdx, list);
+  }
 
   return (
     <HTMLContainer
       id={shape.id}
-      className="p-4 bg-white/95 rounded-2xl border-2 border-slate-300 shadow-xl select-none overflow-visible flex flex-col justify-start gap-2"
+      className="px-4 py-3 bg-white/95 rounded-2xl border-2 border-slate-300 shadow-xl select-none flex flex-col justify-start gap-1.5"
       style={{
         width: shape.props.w,
         height: shape.props.h,
@@ -107,7 +118,7 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
       }}
     >
       {/* Array Header Title & Quick Actions */}
-      <div className="flex items-center justify-between pb-1 border-b border-dashed border-slate-200">
+      <div className="flex items-center justify-between pb-1 border-b border-dashed border-slate-200 shrink-0">
         <div className="flex items-center gap-2">
           <span className="font-handwriting text-2xl font-bold text-slate-800">
             {name || 'Array'}
@@ -131,12 +142,61 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
         </button>
       </div>
 
-      {/* 1D Array Slots Horizontal Scroll Grid */}
-      <div className="flex items-center gap-3.5 py-2 overflow-x-auto">
-        {/* Pre-Array Start Zone (for pointers like i = -1) */}
-        {prePointers.length > 0 && (
+      {/* 1D Array Slots Horizontal Scroll Area */}
+      <div className="relative pt-1 pb-1 overflow-x-auto overflow-y-visible flex-1 flex flex-col justify-start min-h-0">
+        {/* Continuous Gliding Pointer Track (Smooth animated sliding across slots) */}
+        <div className="relative h-8 min-w-max w-full overflow-visible mb-2 shrink-0 z-30">
+          {pointerList.map(({ name, slotIdx }) => {
+            const colorConfig = POINTER_COLORS[name] || {
+              bg: 'bg-slate-700',
+              text: 'text-white',
+              ring: 'ring-slate-400',
+            };
+            const isSelected = selectedPointer === name;
+
+            const slotPeers = pointersBySlot.get(slotIdx) || [name];
+            const peerIndex = slotPeers.indexOf(name);
+            const totalPeers = slotPeers.length;
+
+            // Base center coordinate: slot [-1] center is 36px, pitch is 84px
+            const baseCenterX = 36 + (slotIdx + 1) * 84;
+            // Clean horizontal stagger if multiple pointers occupy same slot
+            const staggerOffset = totalPeers > 1 ? (peerIndex - (totalPeers - 1) / 2) * 26 : 0;
+            const targetX = baseCenterX + staggerOffset;
+
+            return (
+              <div
+                key={name}
+                style={{
+                  transform: `translateX(${targetX}px) translateX(-50%)`,
+                  transition: 'transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }}
+                className="absolute top-0 left-0 flex items-center justify-center pointer-events-auto z-30"
+              >
+                <div
+                  draggable
+                  onDragStart={(e) => handlePointerDragStart(name, e)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPointer(isSelected ? null : name);
+                  }}
+                  className={`px-2.5 py-0.5 rounded-full ${colorConfig.bg} ${colorConfig.text} font-handwriting text-sm font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform ${
+                    isSelected ? `ring-3 ${colorConfig.ring} scale-110` : ''
+                  }`}
+                  title={`Drag pointer ${name} or click to select, then click a slot to snap`}
+                >
+                  {name}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Array Slots Row */}
+        <div className="flex items-center gap-3 min-w-max relative z-10 shrink-0 pt-0.5">
+          {/* Pre-Array Start Zone (ghost cell for index -1) */}
           <div
-            className={`flex flex-col items-center shrink-0 cursor-pointer rounded-xl p-1 transition-all ${
+            className={`w-[72px] shrink-0 flex flex-col items-center cursor-pointer rounded-xl p-1 transition-all ${
               selectedPointer ? 'ring-2 ring-indigo-300 bg-indigo-50/50' : ''
             }`}
             onDragOver={handleSlotDragOver}
@@ -145,37 +205,8 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
               if (selectedPointer) handleSnapPointerToSlot(selectedPointer, -1);
             }}
           >
-            {/* Pre-array Pointer Badges */}
-            <div className="h-8 flex items-center justify-center gap-1.5 min-w-[56px]">
-              {prePointers.map(([pName]) => {
-                const colorConfig = POINTER_COLORS[pName] || {
-                  bg: 'bg-slate-700',
-                  text: 'text-white',
-                  ring: 'ring-slate-400',
-                };
-                const isSelected = selectedPointer === pName;
-                return (
-                  <div
-                    key={pName}
-                    draggable
-                    onDragStart={(e) => handlePointerDragStart(pName, e)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedPointer(isSelected ? null : pName);
-                    }}
-                    className={`px-2.5 py-0.5 rounded-full ${colorConfig.bg} ${colorConfig.text} font-handwriting text-sm font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform ${
-                      isSelected ? `ring-3 ${colorConfig.ring} scale-110` : ''
-                    }`}
-                    title={`Drag pointer ${pName} or click to select, then click a slot to snap`}
-                  >
-                    {pName}
-                  </div>
-                );
-              })}
-            </div>
-
             {/* Ghost Start Cell */}
-            <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 flex flex-col items-center justify-center shadow-2xs">
+            <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/80 flex flex-col items-center justify-center shadow-2xs hover:border-indigo-400 transition-colors">
               <span className="font-mono text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
                 Start
               </span>
@@ -186,114 +217,80 @@ export const ArrayComponent: React.FC<ArrayComponentProps> = ({ shape, util }) =
               [-1]
             </span>
           </div>
-        )}
 
-        {/* In-Bounds Array Slots [0..n-1] */}
-        {values.map((val, idx) => {
-          const highlight = highlights[String(idx)] || 'default';
-          const isComparing = highlight === 'comparing';
-          const isSwapped = highlight === 'swapped';
-          const isSorted = highlight === 'sorted';
-          const isActive = highlight === 'active';
+          {/* In-Bounds Array Slots [0..n-1] */}
+          {values.map((val, idx) => {
+            const highlight = highlights[String(idx)] || 'default';
+            const isComparing = highlight === 'comparing';
+            const isSwapped = highlight === 'swapped';
+            const isSorted = highlight === 'sorted';
+            const isActive = highlight === 'active';
 
-          // Find pointers pointing to this index
-          const activePointers = Object.entries(pointers).filter(
-            ([, pIdx]) => Number(pIdx) === idx
-          );
-
-          return (
-            <div
-              key={idx}
-              className={`flex flex-col items-center shrink-0 cursor-pointer rounded-xl p-1 transition-all ${
-                selectedPointer ? 'hover:bg-indigo-50/60 ring-1 ring-slate-200' : ''
-              }`}
-              onDragOver={handleSlotDragOver}
-              onDrop={(e) => handleSlotDrop(idx, e)}
-              onClick={() => {
-                if (selectedPointer) {
-                  handleSnapPointerToSlot(selectedPointer, idx);
-                }
-              }}
-            >
-              {/* Pointer Badges Area */}
-              <div className="h-8 flex items-center justify-center gap-1.5 min-w-[60px]">
-                {activePointers.map(([pName]) => {
-                  const colorConfig = POINTER_COLORS[pName] || {
-                    bg: 'bg-slate-700',
-                    text: 'text-white',
-                    ring: 'ring-slate-400',
-                  };
-                  const isSelected = selectedPointer === pName;
-                  return (
-                    <div
-                      key={pName}
-                      draggable
-                      onDragStart={(e) => handlePointerDragStart(pName, e)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPointer(isSelected ? null : pName);
-                      }}
-                      className={`px-2.5 py-0.5 rounded-full ${colorConfig.bg} ${colorConfig.text} font-handwriting text-sm font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform ${
-                        isSelected ? `ring-3 ${colorConfig.ring} scale-110` : ''
-                      }`}
-                      title={`Drag pointer ${pName} or click to select, then click a slot to snap`}
-                    >
-                      {pName}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Slot Value Box */}
+            return (
               <div
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setEditingIndex(idx);
-                  setEditVal(String(val));
-                }}
-                className={`w-16 h-16 rounded-xl border-2 flex items-center justify-center transition-all duration-200 ${
-                  isSwapped
-                    ? 'border-fuchsia-500 bg-fuchsia-50/90 shadow-md shadow-fuchsia-500/20 scale-105 ring-3 ring-fuchsia-400'
-                    : isComparing
-                    ? 'border-amber-500 bg-amber-50/90 shadow-md shadow-amber-500/20 scale-105 ring-2 ring-amber-300'
-                    : isSorted
-                    ? 'border-emerald-600 bg-emerald-50/90 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-300'
-                    : isActive
-                    ? 'border-indigo-600 bg-indigo-50/90 shadow-md shadow-indigo-500/20 scale-105 ring-2 ring-indigo-300'
-                    : 'border-slate-400/90 bg-white hover:border-indigo-500 hover:shadow-xs'
+                key={idx}
+                className={`w-[72px] shrink-0 flex flex-col items-center cursor-pointer rounded-xl p-1 transition-all ${
+                  selectedPointer ? 'hover:bg-indigo-50/60 ring-1 ring-slate-200' : ''
                 }`}
+                onDragOver={handleSlotDragOver}
+                onDrop={(e) => handleSlotDrop(idx, e)}
+                onClick={() => {
+                  if (selectedPointer) {
+                    handleSnapPointerToSlot(selectedPointer, idx);
+                  }
+                }}
               >
-                {editingIndex === idx ? (
-                  <input
-                    type="number"
-                    autoFocus
-                    value={editVal}
-                    onChange={(e) => setEditVal(e.target.value)}
-                    onBlur={() => handleCommitEdit(idx)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleCommitEdit(idx);
-                      if (e.key === 'Escape') setEditingIndex(null);
-                    }}
-                    className="w-12 text-center font-handwriting text-2xl font-bold text-indigo-700 bg-transparent border-b-2 border-indigo-600 focus:outline-hidden"
-                  />
-                ) : (
-                  <span className="font-handwriting text-2xl font-bold text-slate-800">
-                    {val}
-                  </span>
-                )}
-              </div>
+                {/* Slot Value Box with Smooth Transitions & Swap Animation */}
+                <div
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingIndex(idx);
+                    setEditVal(String(val));
+                  }}
+                  className={`w-16 h-16 rounded-xl border-2 flex items-center justify-center transition-all duration-350 ease-out ${
+                    isSwapped
+                      ? 'border-fuchsia-500 bg-fuchsia-50/90 shadow-lg shadow-fuchsia-500/25 scale-105 ring-3 ring-fuchsia-400 animate-pulse'
+                      : isComparing
+                      ? 'border-amber-500 bg-amber-50/90 shadow-md shadow-amber-500/20 scale-105 ring-2 ring-amber-300'
+                      : isSorted
+                      ? 'border-emerald-600 bg-emerald-50/90 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-300'
+                      : isActive
+                      ? 'border-indigo-600 bg-indigo-50/90 shadow-md shadow-indigo-500/20 scale-105 ring-2 ring-indigo-300'
+                      : 'border-slate-400/90 bg-white hover:border-indigo-500 hover:shadow-xs'
+                  }`}
+                >
+                  {editingIndex === idx ? (
+                    <input
+                      type="number"
+                      autoFocus
+                      value={editVal}
+                      onChange={(e) => setEditVal(e.target.value)}
+                      onBlur={() => handleCommitEdit(idx)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCommitEdit(idx);
+                        if (e.key === 'Escape') setEditingIndex(null);
+                      }}
+                      className="w-12 text-center font-handwriting text-2xl font-bold text-indigo-700 bg-transparent border-b-2 border-indigo-600 focus:outline-hidden"
+                    />
+                  ) : (
+                    <span className="font-handwriting text-2xl font-bold text-slate-800 transition-all duration-200">
+                      {val}
+                    </span>
+                  )}
+                </div>
 
-              {/* Slot Index Subscript */}
-              <span className="mt-1 font-handwriting text-sm font-semibold text-slate-400">
-                [{idx}]
-              </span>
-            </div>
-          );
-        })}
+                {/* Slot Index Subscript */}
+                <span className="mt-1 font-handwriting text-sm font-semibold text-slate-400">
+                  [{idx}]
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Footer Instructions */}
-      <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between pt-1 border-t border-slate-100">
+      <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between pt-1 border-t border-slate-100 mt-auto shrink-0">
         <span>✎ Double-click slot to edit</span>
         <span>⇄ Drag or click pointer to snap to slot</span>
       </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseBoxShapeUtil } from '@tldraw/tldraw';
+import { BaseBoxShapeUtil, resizeBox } from '@tldraw/tldraw';
 import type { TLBaseShape } from '@tldraw/tldraw';
 import { T } from '@tldraw/validate';
 import { LoopTrackerComponent } from './LoopTrackerComponent.tsx';
@@ -16,6 +16,15 @@ export type ILoopTrackerShape = TLBaseShape<
 
 export class LoopTrackerShapeUtil extends BaseBoxShapeUtil<any> {
   static override type = LOOP_TRACKER_SHAPE_TYPE;
+
+  override canResize = () => true;
+
+  override onResize(shape: ILoopTrackerShape, info: any) {
+    return resizeBox(shape as any, info, {
+      minWidth: 280,
+      minHeight: 120,
+    });
+  }
 
   static override props = {
     w: T.number,
