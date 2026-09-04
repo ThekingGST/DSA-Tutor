@@ -257,13 +257,19 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* Stepping through a loop highlights code line, updates $i$ in table, pulses array pointer, advances loop pill, and smoothly updates on-canvas variable cards.
 - Verified: Created `src/canvas/shapes/LoopTrackerShapeUtil.ts`, `LoopTrackerComponent.tsx`, `loopTrackerLogic.ts`, `src/canvas/shapes/VariableCardsShapeUtil.ts`, `VariableCardsComponent.tsx`, and `src/canvas/shapes/variableCardsLogic.ts`. Pure reducer supports `set-loop`, `remove-loop`, `update-loop`, `set-variable`, and `remove-variable` actions. Bi-directional manipulation wired: clicking pills or steppers on canvas emits `dsa:loop-step` to seek timeline; stepping timeline synchronizes iteration pills, condition banners, and variable cards with change pulse animations. Converted On-Canvas Variable Cards from a floating DOM overlay into a full TLDraw custom canvas shape with resize persistence and direct-manipulation editing. 62/62 unit tests passing across 9 suites (`tests/*.test.ts`). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 1.03s. Browser testing safety guarantees established (`npm run cleanup:browsers`).
 
-### Phase 6: Featherless AI Client & Storyboard Parser (Hour 15 - 18)
-- [ ] Create `FeatherlessClient` using standard `fetch` against `https://api.featherless.ai/v1/chat/completions`.
-- [ ] System prompt engineering: instructs `Qwen/Qwen2.5-Coder-32B-Instruct` to output valid `TimelineStep[]` JSON.
-- [ ] Implement Micro-Command parser: detects prompts like `"create array [5, 2, 8]"` and spawns shapes immediately.
-- [ ] Implement Macro-Storyboard parser: takes problem description or code and generates full timeline.
-- [ ] Add JSON extraction, regex sanitization, and fallback to pre-baked fixtures on failure.
-- [ ] *Done Criteria:* Typing "create array [10, 20, 30]" spawns array; typing "find max element" generates playable timeline.
+### Phase 6: Featherless AI Client & Storyboard Parser (Hour 15 - 18) — DONE
+- [x] Create `FeatherlessClient` using standard `fetch` against `https://api.featherless.ai/v1/chat/completions`.
+- [x] System prompt engineering: instructs `zai-org/GLM-5.3-Flash` to output valid `TimelineStep[]` JSON with conversational `chatExplanation`.
+- [x] Implement Micro-Command parser: detects prompts like `"create array [5, 2, 8]"` and spawns shapes immediately.
+- [x] Implement Macro-Storyboard parser: takes problem description or code and generates full timeline.
+- [x] Add JSON extraction, regex sanitization, and fallback to pre-baked fixtures on failure.
+- [x] **AI Chat → Code + Visualization:** Natural language programming/DSA questions asked in the chat tab (e.g. "Reverse a linked list", "How does binary search work?", "Find the maximum element in this array", "Explain how this for loop works") automatically:
+  - Detect target programming language (Python, TypeScript, or C++) or default to workspace language.
+  - Generate clean executable code loaded into the code editor with manual editing mode (`Edit` / `Save`).
+  - Generate full whiteboard visualization components (`arr`, `vars`, `for`, `tree`, `linked-list`) synced to code.
+  - Return concise conversational chat explanation with algorithm metadata badges and quick play/code actions.
+- [x] *Done Criteria:* Typing "create array [10, 20, 30]" spawns array; asking "How does binary search work?" generates code, visualization, and timeline playback.
+- Verified: Created `src/ai/dsaIntentParser.ts` (Structured Intermediate Representation for arrays, linked lists, trees, stacks, queues, variables, and algorithms with custom input arrays), `src/ai/dynamicAlgorithmStoryboards.ts` (tailored storyboards for second maximum, min/second-min, two-sum, linked list middle, bst search/find-min/insert, reverse array, binary search, bubble sort), `src/ai/aiProblemSolver.ts`, `src/ai/featherlessClient.ts`, `src/ai/systemPrompt.ts` (configured with `zai-org/GLM-5.3-Flash` as primary recommended model), `src/ai/storyboardParser.ts`, `src/ai/microCommands.ts`, `src/ai/fallbackStoryboards.ts`, and `src/components/chat/ChatPanel.tsx`. Fixed WhiteboardCanvas to dynamically render arrays, linked lists, trees, and loops for all scenarios without hardcoded scenarioId restrictions. Added 7 test suites including comprehensive multi-case DSA validation suite (`tests/dsaMultiCaseValidation.test.ts`). 143/143 unit tests passing across 18 suites in 376ms (`rtk npm test`). `rtk npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `rtk npm run build` (`tsc -b && vite build`) passes in 915ms. Captured Windows Chrome headless screenshots (`dsa_second_max.png`, `dsa_second_max_code.png`, `dsa_second_max_final.png`). Browser cleanup verified (`rtk npm run cleanup:browsers`).
 
 ### Phase 7: Web Speech Audio Narration (Hour 18 - 20)
 - [ ] Implement `WebSpeechAdapter` wrapping `window.speechSynthesis`.

@@ -9,7 +9,7 @@ import { BSTNodeShapeUtil } from '../../canvas/shapes/BSTNodeShapeUtil';
 import { LoopTrackerShapeUtil } from '../../canvas/shapes/LoopTrackerShapeUtil';
 import { VariableCardsShapeUtil } from '../../canvas/shapes/VariableCardsShapeUtil';
 import { layoutLinkedList } from '../../canvas/shapes/linkedListLogic';
-import { layoutTree } from '../../canvas/shapes/treeLayoutLogic';
+import { layoutTree, findTreeRootId } from '../../canvas/shapes/treeLayoutLogic';
 import { entityToLoopShapeProps } from '../../canvas/shapes/loopTrackerLogic';
 import { entityMapToVariableItems } from '../../canvas/shapes/variableCardsLogic';
 import {
@@ -380,28 +380,30 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     [onEditorMount]
   );
 
-  // Compute layout coordinates for Linked List and BST
+  // Compute layout coordinates for Linked List and BST dynamically
   const listPositions = useMemo(() => {
-    if (scenarioId !== 'reverse-linked-list') return {};
+    if (Object.keys(linkedListNodes).length === 0) return {};
     return layoutLinkedList(linkedListNodes, 80, 140, 220);
-  }, [scenarioId, linkedListNodes]);
+  }, [linkedListNodes]);
 
   const treeLayout = useMemo(() => {
-    if (scenarioId !== 'bst-insert') return { positions: {}, connectors: [] };
-    return layoutTree(treeNodes, 'n50', 60, 70, 110, 110);
-  }, [scenarioId, treeNodes]);
+    const nodeCount = Object.keys(treeNodes).length;
+    if (nodeCount === 0) return { positions: {}, connectors: [] };
+    const rootId = findTreeRootId(treeNodes) || Object.keys(treeNodes)[0];
+    return layoutTree(treeNodes, rootId, 60, 70, 110, 110);
+  }, [treeNodes]);
 
   // Synchronize TLDraw shape canvas with pure reducer state
   // PERSISTENCE GUARANTEE: Never overwrite x and y on existing shapes so user drag positions persist across steps!
   useEffect(() => {
     if (!editor) return;
 
-    // 1. Synchronize Array Shape (QuickSort)
+    // 1. Synchronize Array Shape (dynamically whenever arrayEntity has values)
     const arrayShapeId = 'shape:dsa-main-array' as any;
-    if (scenarioId === 'quicksort-partition' && arrayEntity) {
+    if (arrayEntity && arrayEntity.values && arrayEntity.values.length > 0) {
       const existing = editor.getShape(arrayShapeId);
       const stringifiedHighlights = Object.fromEntries(
-        Object.entries(arrayEntity.highlights).map(([k, v]) => [String(k), String(v)])
+        Object.entries(arrayEntity.highlights || {}).map(([k, v]) => [String(k), String(v)])
       );
       const adaptedArrayDims = calculateArrayPanelDimensions(arrayEntity.values.length);
 
@@ -413,8 +415,9 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           props: {
             w: adaptedArrayDims.w,
             h: adaptedArrayDims.h,
+            name: arrayEntity.name || 'arr',
             values: [...arrayEntity.values],
-            pointers: { ...arrayEntity.pointers },
+            pointers: { ...(arrayEntity.pointers || {}) },
             highlights: stringifiedHighlights,
           },
         } as any);
@@ -429,7 +432,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             h: adaptedArrayDims.h,
             name: arrayEntity.name || 'arr',
             values: [...arrayEntity.values],
-            pointers: { ...arrayEntity.pointers },
+            pointers: { ...(arrayEntity.pointers || {}) },
             highlights: stringifiedHighlights,
           },
         } as any);
@@ -439,12 +442,13 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       if (existing) editor.deleteShape(arrayShapeId);
     }
 
-    // 2. Synchronize Linked List Node Shapes (Reverse Linked List)
-    if (scenarioId === 'reverse-linked-list') {
-      const nodeIds = Object.keys(linkedListNodes);
-      for (const nodeId of nodeIds) {
+    // 2. Synchronize Linked List Node Shapes (dynamically whenever nodes exist)
+    const nodeIds = Object.keys(linkedListNodes);
+    if (nodeIds.length > 0) {
+      for (let i = 0; i < nodeIds.length; i++) {
+        const nodeId = nodeIds[i];
         const node = linkedListNodes[nodeId];
-        const pos = listPositions[nodeId] || { x: 100, y: 140 };
+        const pos = listPositions[nodeId] || { x: 80 + i * 140, y: 140 };
         const shapeId = `shape:dsa-linked-${nodeId}` as any;
         const existing = editor.getShape(shapeId);
         const adaptedListDims = calculateLinkedListNodeDimensions(node.pointers.length, node.value);
@@ -486,7 +490,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         }
       }
     } else {
-      // Clean up linked nodes if switched away
+      // Clean up linked nodes if none exist
       const allShapes = editor.getCurrentPageShapeIds();
       for (const id of allShapes) {
         if (String(id).includes('dsa-linked-')) {
@@ -495,10 +499,10 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       }
     }
 
-    // 3. Synchronize BST Tree Node Shapes
-    if (scenarioId === 'bst-insert') {
-      const nodeIds = Object.keys(treeNodes);
-      for (const nodeId of nodeIds) {
+    // 3. Synchronize BST Tree Node Shapes (dynamically whenever tree nodes exist)
+    const treeNodeIds = Object.keys(treeNodes);
+    if (treeNodeIds.length > 0) {
+      for (const nodeId of treeNodeIds) {
         const node = treeNodes[nodeId];
         const pos = treeLayout.positions[nodeId] || { x: 100, y: 100 };
         const shapeId = `shape:dsa-tree-${nodeId}` as any;
@@ -540,7 +544,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         }
       }
     } else {
-      // Clean up tree shapes if switched away
+      // Clean up tree shapes if none exist
       const allShapes = editor.getCurrentPageShapeIds();
       for (const id of allShapes) {
         if (String(id).includes('dsa-tree-')) {

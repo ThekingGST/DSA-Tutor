@@ -13,6 +13,7 @@ export interface PresetScenario {
   initialPrompt: string;
   initialState: CanvasEntities;
   steps: TimelineStep[];
+  chatExplanation?: string;
 }
 
 export interface StudioSettings {

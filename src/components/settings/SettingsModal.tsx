@@ -10,7 +10,8 @@ interface SettingsModalProps {
 }
 
 const AVAILABLE_MODELS = [
-  { id: 'Qwen/Qwen2.5-Coder-32B-Instruct', name: 'Qwen 2.5 Coder 32B (Recommended)', desc: 'Best for code AST comprehension & structured JSON' },
+  { id: 'zai-org/GLM-5.3-Flash', name: 'GLM 5.3 Flash (Recommended)', desc: 'Ultra-fast inference & superior structured JSON code generation' },
+  { id: 'Qwen/Qwen2.5-Coder-32B-Instruct', name: 'Qwen 2.5 Coder 32B', desc: 'Code AST comprehension & structured JSON' },
   { id: 'meta-llama/Meta-Llama-3.1-70B-Instruct', name: 'Llama 3.1 70B Instruct', desc: 'Powerful general reasoning & detailed explanations' },
   { id: 'mistralai/Mistral-Small-24B-Instruct-2501', name: 'Mistral Small 24B', desc: 'Fast & responsive open weights model' },
 ];

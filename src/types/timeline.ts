@@ -95,4 +95,5 @@ export interface TimelineStoryboard {
   initialPrompt: string;
   initialState: CanvasEntities;
   steps: TimelineStep[];
+  chatExplanation?: string;
 }

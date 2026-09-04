@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Volume2, VolumeX, Settings, RotateCcw, ArrowRightLeft, Layers, GitBranch, Sparkles } from 'lucide-react';
+import { Menu, Volume2, VolumeX, Settings, RotateCcw, ArrowRightLeft, Layers, GitBranch, Sparkles, ChevronDown } from 'lucide-react';
 import type { Editor } from '@tldraw/tldraw';
 import type { PresetScenario, StudioSettings } from '../../types/studio';
 import { PRESET_SCENARIOS } from '../../mock/presetScenarios';
@@ -25,6 +25,8 @@ export const WorkspaceTopNav: React.FC<WorkspaceTopNavProps> = ({
   editor,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPresetsDropdownOpen, setIsPresetsDropdownOpen] = useState(false);
+  const isCustomScenario = !PRESET_SCENARIOS.some((s) => s.id === currentScenario.id);
 
   return (
     <div className="absolute top-3 left-4 right-4 z-30 pointer-events-none flex items-start justify-between gap-4">
@@ -104,40 +106,78 @@ export const WorkspaceTopNav: React.FC<WorkspaceTopNavProps> = ({
           )}
         </div>
 
-        {/* Excalidraw-Style Scenario Tabs */}
-        <div className="flex items-center gap-1 bg-slate-200/50 p-1 rounded-2xl border border-slate-200/80 backdrop-blur-md">
-          {PRESET_SCENARIOS.map((scenario) => {
-            const isActive = scenario.id === currentScenario.id;
-            const Icon =
-              scenario.id === 'quicksort-partition'
-                ? ArrowRightLeft
-                : scenario.id === 'reverse-linked-list'
-                ? Layers
-                : GitBranch;
+        {/* Excalidraw-Style Scenario Tabs or Custom Scenario Banner */}
+        <div className="relative flex items-center gap-1 bg-slate-200/50 p-1 rounded-2xl border border-slate-200/80 backdrop-blur-md">
+          {isCustomScenario ? (
+            <>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs bg-white text-indigo-700 font-semibold shadow-xs border border-indigo-300">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span className="whitespace-nowrap font-medium">{currentScenario.name || currentScenario.title}</span>
+              </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsPresetsDropdownOpen(!isPresetsDropdownOpen)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-all cursor-pointer font-medium"
+                >
+                  <span>Presets</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+                {isPresetsDropdownOpen && (
+                  <div className="absolute top-10 left-0 w-52 rounded-xl bg-white border border-slate-200 shadow-xl p-1 z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+                    <div className="px-2.5 py-1 text-[10px] uppercase font-semibold tracking-wider text-slate-400">
+                      Preset Algorithms
+                    </div>
+                    {PRESET_SCENARIOS.map((scenario) => (
+                      <button
+                        key={scenario.id}
+                        type="button"
+                        onClick={() => {
+                          setIsPresetsDropdownOpen(false);
+                          onSelectScenario(scenario);
+                        }}
+                        className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
+                      >
+                        <span className="font-medium">{scenario.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            PRESET_SCENARIOS.map((scenario) => {
+              const isActive = scenario.id === currentScenario.id;
+              const Icon =
+                scenario.id === 'quicksort-partition'
+                  ? ArrowRightLeft
+                  : scenario.id === 'reverse-linked-list'
+                  ? Layers
+                  : GitBranch;
 
-            return (
-              <button
-                key={scenario.id}
-                type="button"
-                onClick={() => onSelectScenario(scenario)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5 opacity-70 shrink-0" />
-                <span className="whitespace-nowrap hidden xl:inline">{scenario.name}</span>
-                <span className="whitespace-nowrap inline xl:hidden">
-                  {scenario.id === 'quicksort-partition'
-                    ? 'QuickSort'
-                    : scenario.id === 'reverse-linked-list'
-                    ? 'Reverse List'
-                    : 'BST Tree'}
-                </span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={scenario.id}
+                  type="button"
+                  onClick={() => onSelectScenario(scenario)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/90'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 opacity-70 shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {scenario.id === 'quicksort-partition'
+                      ? 'QuickSort'
+                      : scenario.id === 'reverse-linked-list'
+                      ? 'Reverse List'
+                      : 'BST Tree'}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
 
