@@ -34,11 +34,14 @@ export interface VariableCardEntity {
 }
 
 export interface LoopTrackerEntity {
+  id?: string;
   header: string;
   conditionText: string;
   currentIteration: number;
   totalIterations: number;
   isComplete: boolean;
+  variableName?: string;
+  iterationPills?: string[];
 }
 
 export interface CanvasEntities {
@@ -62,6 +65,8 @@ export type CanvasMutationAction =
   | { kind: 'set-node-pointers'; nodeId: string; pointers: string[] }
   | { kind: 'insert-tree-node'; nodeId: string; value: number; parentId?: string; branch?: 'left' | 'right' }
   | { kind: 'highlight-tree-node'; nodeId: string; state: HighlightState }
+  | { kind: 'set-loop'; loop: LoopTrackerEntity }
+  | { kind: 'remove-loop' }
   | { kind: 'update-loop'; iteration: number; conditionText: string; isComplete?: boolean };
 
 export interface CanvasMutation {

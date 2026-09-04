@@ -45,7 +45,10 @@ export function cloneCanvasEntities(entities: CanvasEntities): CanvasEntities {
   }
 
   if (entities.loop) {
-    result.loop = { ...entities.loop };
+    result.loop = {
+      ...entities.loop,
+      iterationPills: entities.loop.iterationPills ? [...entities.loop.iterationPills] : undefined,
+    };
   }
 
   return result;
@@ -169,6 +172,19 @@ export function applyCanvasMutation(
       break;
     }
 
+    case 'set-loop': {
+      next.loop = {
+        ...action.loop,
+        iterationPills: action.loop.iterationPills ? [...action.loop.iterationPills] : undefined,
+      };
+      break;
+    }
+
+    case 'remove-loop': {
+      delete next.loop;
+      break;
+    }
+
     case 'update-loop': {
       if (next.loop) {
         next.loop.currentIteration = action.iteration;
@@ -176,6 +192,14 @@ export function applyCanvasMutation(
         if (action.isComplete !== undefined) {
           next.loop.isComplete = action.isComplete;
         }
+      } else {
+        next.loop = {
+          header: 'for loop',
+          conditionText: action.conditionText,
+          currentIteration: action.iteration,
+          totalIterations: Math.max(4, action.iteration + 1),
+          isComplete: !!action.isComplete,
+        };
       }
       break;
     }

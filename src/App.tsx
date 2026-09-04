@@ -191,8 +191,8 @@ export const App: React.FC = () => {
               : 'w-0 min-w-0 max-w-0 opacity-0 overflow-hidden pointer-events-none border-none'
           }`}
         >
-          {/* Code Panel with Line Highlighting */}
-          <div className="flex-1 min-h-0">
+          {/* Code Panel with Line Highlighting & Live Variable Watcher */}
+          <div className="flex-1 min-h-0 flex flex-col">
             <CodePanel
               code={currentScenario.code}
               language={currentScenario.language}
@@ -227,11 +227,12 @@ export const App: React.FC = () => {
             </button>
           )}
 
-          {/* Whiteboard Canvas connected to pure reducer CanvasState */}
+          {/* Whiteboard Canvas connected to pure reducer CanvasState & Loop Tracker */}
           <WhiteboardCanvas
             currentStep={currentStep}
             scenarioId={currentScenario.id}
             canvasState={timeline.canvasState}
+            onSeek={timeline.seekTo}
           />
 
           {/* Bottom Floating Timeline Player HUD */}

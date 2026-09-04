@@ -6,16 +6,24 @@ import type { CanvasEntities } from '../../types/timeline';
 import { ArrayShapeUtil } from '../../canvas/shapes/ArrayShapeUtil';
 import { LinkedListNodeShapeUtil } from '../../canvas/shapes/LinkedListNodeShapeUtil';
 import { BSTNodeShapeUtil } from '../../canvas/shapes/BSTNodeShapeUtil';
+import { LoopTrackerShapeUtil } from '../../canvas/shapes/LoopTrackerShapeUtil';
 import { layoutLinkedList } from '../../canvas/shapes/linkedListLogic';
 import { layoutTree } from '../../canvas/shapes/treeLayoutLogic';
+import { entityToLoopShapeProps } from '../../canvas/shapes/loopTrackerLogic';
 
 interface WhiteboardCanvasProps {
   currentStep: TimelineStep;
   scenarioId: string;
   canvasState: CanvasEntities;
+  onSeek?: (stepIndex: number) => void;
 }
 
-const customShapeUtils = [ArrayShapeUtil, LinkedListNodeShapeUtil, BSTNodeShapeUtil];
+const customShapeUtils = [
+  ArrayShapeUtil,
+  LinkedListNodeShapeUtil,
+  BSTNodeShapeUtil,
+  LoopTrackerShapeUtil,
+];
 
 /**
  * OnTheCanvas Connectors Overlay
@@ -262,11 +270,14 @@ const CanvasConnectorsOverlay = track(() => {
 
 const customComponents: TLComponents = {
   OnTheCanvas: CanvasConnectorsOverlay,
+  StylePanel: null,
 };
 
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
+  currentStep,
   scenarioId,
   canvasState,
+  onSeek,
 }) => {
   const [editor, setEditor] = useState<Editor | null>(null);
 
@@ -274,6 +285,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   const arrayEntity = canvasState.array;
   const linkedListNodes = canvasState.linkedListNodes;
   const treeNodes = canvasState.treeNodes;
+  const loopEntity = canvasState.loop;
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor);
@@ -310,12 +322,14 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const stringifiedHighlights = Object.fromEntries(
         Object.entries(arrayEntity.highlights).map(([k, v]) => [String(k), String(v)])
       );
-      const targetWidth = Math.max(560, (arrayEntity.values.length + 1) * 80 + 100);
+      const targetWidth = Math.max(540, (arrayEntity.values.length + 1) * 75 + 80);
 
       if (existing) {
         editor.updateShape({
           id: arrayShapeId,
           type: 'dsa-array',
+          x: 60,
+          y: 70,
           props: {
             w: targetWidth,
             h: 230,
@@ -328,8 +342,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         editor.createShape({
           id: arrayShapeId,
           type: 'dsa-array',
-          x: 100,
-          y: 80,
+          x: 60,
+          y: 70,
           props: {
             w: targetWidth,
             h: 230,
@@ -378,8 +392,8 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
             x: pos.x,
             y: pos.y,
             props: {
-              w: 160,
-              h: 110,
+              w: 170,
+              h: 120,
               nodeId: node.id,
               value: node.value,
               nextId: node.nextId,
@@ -390,7 +404,7 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         }
       }
     } else {
-      // Clean up linked list shapes if switched away
+      // Clean up linked nodes if switched away
       const allShapes = editor.getCurrentPageShapeIds();
       for (const id of allShapes) {
         if (String(id).includes('dsa-linked-')) {
@@ -399,12 +413,12 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       }
     }
 
-    // 3. Synchronize Tree Node Shapes (BST Insert)
+    // 3. Synchronize BST Tree Node Shapes
     if (scenarioId === 'bst-insert') {
       const nodeIds = Object.keys(treeNodes);
       for (const nodeId of nodeIds) {
         const node = treeNodes[nodeId];
-        const pos = treeLayout.positions[nodeId] || { x: 250, y: 80 };
+        const pos = treeLayout.positions[nodeId] || { x: 100, y: 100 };
         const shapeId = `shape:dsa-tree-${nodeId}` as any;
         const existing = editor.getShape(shapeId);
 
@@ -450,7 +464,51 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
         }
       }
     }
-  }, [editor, scenarioId, arrayEntity, linkedListNodes, listPositions, treeNodes, treeLayout]);
+
+    // 4. Synchronize Loop Tracker Shape
+    const loopShapeId = 'shape:dsa-main-loop' as any;
+    if (loopEntity) {
+      const existing = editor.getShape(loopShapeId);
+      const loopProps = entityToLoopShapeProps(loopEntity, 380, 148);
+      // Clean positioning on canvas
+      const loopX = scenarioId === 'quicksort-partition' ? 620 : 80;
+      const loopY = scenarioId === 'quicksort-partition' ? 70 : 340;
+
+      if (existing) {
+        editor.updateShape({
+          id: loopShapeId,
+          type: 'dsa-loop-tracker',
+          x: loopX,
+          y: loopY,
+          props: { ...loopProps },
+        } as any);
+      } else {
+        editor.createShape({
+          id: loopShapeId,
+          type: 'dsa-loop-tracker',
+          x: loopX,
+          y: loopY,
+          props: { ...loopProps },
+        } as any);
+      }
+    } else {
+      const existing = editor.getShape(loopShapeId);
+      if (existing) editor.deleteShape(loopShapeId);
+    }
+  }, [editor, scenarioId, arrayEntity, linkedListNodes, listPositions, treeNodes, treeLayout, loopEntity]);
+
+  // Handle direct manipulation seek events from on-canvas loop iteration pills
+  useEffect(() => {
+    const handleLoopStep = (e: Event) => {
+      const customEvent = e as CustomEvent<{ iteration: number }>;
+      const iter = customEvent.detail?.iteration;
+      if (onSeek && iter !== undefined) {
+        onSeek(Math.min(currentStep.stepNumber, iter + 1));
+      }
+    };
+    window.addEventListener('dsa:loop-step', handleLoopStep);
+    return () => window.removeEventListener('dsa:loop-step', handleLoopStep);
+  }, [onSeek, currentStep]);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#fafafa]">

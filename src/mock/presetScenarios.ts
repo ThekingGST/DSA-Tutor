@@ -32,6 +32,15 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
         max: { name: 'max', value: 13, color: 'mint' },
         secondMax: { name: 'secondMax', value: 5, color: 'mint' },
       },
+      loop: {
+        header: 'for j in range(low, high)',
+        conditionText: 'j < 4 (Evaluating low..high)',
+        currentIteration: 0,
+        totalIterations: 4,
+        isComplete: false,
+        variableName: 'j',
+        iterationPills: ['j = 0', 'j = 1', 'j = 2', 'j = 3'],
+      },
     },
     steps: [
       {
@@ -55,6 +64,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'variable', action: { kind: 'set-variable', name: 'i', value: -1, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'j', value: 0, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'arr[high]', value: 13, color: 'indigo' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 0, conditionText: 'j = 0 < 4 (Initializing loop)' } },
         ],
       },
       {
@@ -75,6 +85,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'array', action: { kind: 'highlight-slots', indices: [0, 4], state: 'comparing' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'arr[j]', value: 29, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: '29 <= 13', value: 'False', color: 'amber' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 0, conditionText: 'arr[0]=29 <= 13 (False)' } },
         ],
       },
       {
@@ -99,6 +110,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'variable', action: { kind: 'set-variable', name: 'j', value: 1, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'arr[j]', value: 10, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: '10 <= 13', value: 'True (Swap!)', color: 'mint' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 1, conditionText: 'arr[1]=10 <= 13 (True ➔ Swap!)' } },
         ],
       },
       {
@@ -120,6 +132,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'variable', action: { kind: 'set-variable', name: 'j', value: 2, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'arr[j]', value: 14, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: '14 <= 13', value: 'False', color: 'amber' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 2, conditionText: 'arr[2]=14 <= 13 (False)' } },
         ],
       },
       {
@@ -141,6 +154,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'variable', action: { kind: 'set-variable', name: 'j', value: 3, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'arr[j]', value: 37, color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: '37 <= 13', value: 'False', color: 'amber' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 3, conditionText: 'arr[3]=37 <= 13 (False)' } },
         ],
       },
       {
@@ -160,6 +174,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'array', action: { kind: 'highlight-slots', indices: [1], state: 'sorted' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'pivot_index', value: 1, color: 'mint' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'status', value: 'Partition complete', color: 'mint' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 4, conditionText: 'Loop Complete (j=4 >= high)', isComplete: true } },
         ],
       },
     ],
@@ -195,6 +210,15 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
         prev: { name: 'prev', value: 'null', color: 'mint' },
         curr: { name: 'curr', value: 'Node(1)', color: 'mint' },
       },
+      loop: {
+        header: 'while (curr !== null)',
+        conditionText: 'curr = Node(1) !== null (True)',
+        currentIteration: 0,
+        totalIterations: 4,
+        isComplete: false,
+        variableName: 'curr',
+        iterationPills: ['Node(1)', 'Node(2)', 'Node(3)', 'Node(4)'],
+      },
     },
     steps: [
       {
@@ -212,6 +236,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'linked-list', action: { kind: 'set-node-pointers', nodeId: 'n1', pointers: ['curr'] } },
           { type: 'variable', action: { kind: 'set-variable', name: 'prev', value: 'null', color: 'mint' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'curr', value: 'Node(1)', color: 'indigo' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 0, conditionText: 'curr = Node(1) !== null (True)' } },
         ],
       },
       {
@@ -228,6 +253,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
         mutations: [
           { type: 'linked-list', action: { kind: 'set-node-pointers', nodeId: 'n2', pointers: ['next'] } },
           { type: 'variable', action: { kind: 'set-variable', name: 'next', value: 'Node(2)', color: 'purple' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 0, conditionText: 'next = curr.next (Node 2)' } },
         ],
       },
       {
@@ -245,6 +271,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'linked-list', action: { kind: 'connect-nodes', fromId: 'n1', toId: null } },
           { type: 'variable', action: { kind: 'set-variable', name: 'curr.next', value: 'prev (null)', color: 'mint' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'action', value: 'Rewired pointer backwards', color: 'mint' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 0, conditionText: 'curr.next = prev (Rewired Node 1)' } },
         ],
       },
       {
@@ -264,6 +291,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'variable', action: { kind: 'set-variable', name: 'prev', value: 'Node(1)', color: 'mint' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'curr', value: 'Node(2)', color: 'indigo' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'next', value: 'Node(3)', color: 'purple' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 1, conditionText: 'curr = Node(2) !== null (True)' } },
         ],
       },
       {
@@ -280,6 +308,7 @@ export const PRESET_SCENARIOS: PresetScenario[] = [
           { type: 'linked-list', action: { kind: 'set-node-pointers', nodeId: 'n4', pointers: ['prev', 'newHead'] } },
           { type: 'variable', action: { kind: 'set-variable', name: 'newHead', value: 'Node(4)', color: 'mint' } },
           { type: 'variable', action: { kind: 'set-variable', name: 'status', value: 'List fully reversed', color: 'mint' } },
+          { type: 'loop', action: { kind: 'update-loop', iteration: 4, conditionText: 'curr is null (Loop Finished)', isComplete: true } },
         ],
       },
     ],

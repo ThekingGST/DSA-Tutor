@@ -247,11 +247,12 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* Reverse linked list pointers can be dragged by hand; BST auto-arranges cleanly on insertion.
 - Verified: Created `LinkedListNodeShapeUtil.ts`, `LinkedListComponent.tsx`, `linkedListLogic.ts`, `BSTNodeShapeUtil.ts`, `BSTNodeComponent.tsx`, and `treeLayoutLogic.ts`. Registered all custom shapes in `WhiteboardCanvas.tsx` with dynamic SVG connectors for node wires and tree branches. 41/41 unit tests passing across 6 suites (`tests/*.test.ts` in 188ms). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 610ms. Visual verification in Windows Chrome: Reverse Linked List step 0 (initial list with curr pointer), step 2 (mid-air pointer detachment/rewiring to null), step 4 (fully reversed list); BST Insert step 0 (root 50 active with subtrees 30 and 70), step 3 (Node 35 inserted and dynamically attached to Node 40 with auto-recalculated layout).
 
-### Phase 5: Loop Tracker & Variable Watcher (Hour 13 - 15)
-- [ ] Create `LoopTrackerShapeUtil`: floating canvas widget with condition text and iteration pill stepper.
-- [ ] Wire Loop Tracker to `TimelineStep` updates so pills highlight as the algorithm loops.
-- [ ] Connect left-panel Variable Watcher to canvas shapes for synchronized updates.
-- [ ] *Done Criteria:* Stepping through a loop highlights code line, updates $i$ in table, pulses array pointer, and advances loop pill.
+### Phase 5: Loop Tracker & Variable Watcher (Hour 13 - 15) — DONE
+- [x] Create `LoopTrackerShapeUtil`: floating canvas widget with condition text and iteration pill stepper.
+- [x] Wire Loop Tracker to `TimelineStep` updates so pills highlight as the algorithm loops.
+- [x] Connect left-panel Variable Watcher to canvas shapes for synchronized updates.
+- [x] *Done Criteria:* Stepping through a loop highlights code line, updates $i$ in table, pulses array pointer, and advances loop pill.
+- Verified: Created `src/canvas/shapes/LoopTrackerShapeUtil.ts`, `LoopTrackerComponent.tsx`, `loopTrackerLogic.ts`, `src/components/code/VariableWatcher.tsx`, and `src/core/variableWatcherLogic.ts`. Pure reducer supports `set-loop`, `remove-loop`, and `update-loop` actions. Bi-directional manipulation wired: clicking pills or steppers on canvas emits `dsa:loop-step` to seek timeline; stepping timeline synchronizes iteration pills, condition banners (evaluating/true/false/done), and variable watcher deltas. 53/53 unit tests passing across 8 suites (`tests/*.test.ts`). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 5.54s. Visual verification in Windows Chrome: QuickSort partition step 0 (0% progress, evaluating condition, j=0 pill active), QuickSort partition step 2 (swap match, 25% progress, j=0 completed, j=1 active, Variable Watcher highlighting delta `prev: -1` and `prev: 0` with lightning badges), Reverse Linked List step 0 (while loop tracker with Node pills and curr/prev variable tracking).
 
 ### Phase 6: Featherless AI Client & Storyboard Parser (Hour 15 - 18)
 - [ ] Create `FeatherlessClient` using standard `fetch` against `https://api.featherless.ai/v1/chat/completions`.

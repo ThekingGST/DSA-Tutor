@@ -109,8 +109,9 @@ export const CodePanel: React.FC<CodePanelProps> = ({
         </table>
       </div>
 
+
       {/* Footer Status */}
-      <div className="px-4 py-1.5 bg-[#090e1a] border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 select-none">
+      <div className="px-4 py-1.5 bg-[#090e1a] border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 select-none shrink-0">
         <div className="flex items-center gap-1.5">
           <Terminal className="w-3 h-3 text-indigo-400" />
           <span>Active Execution: Line {activeLine}</span>
