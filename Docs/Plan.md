@@ -229,13 +229,14 @@ Three hand-crafted, pixel-perfect demonstration scripts bundled directly in the 
 - [x] *Done Criteria:* Hook advances through scenarios; Play/Pause/Scrub controls respond smoothly; pure reducer computes swaps, pointer movements, tree insertions, and variable cards deterministically.
 - Verified: Created `src/types/timeline.ts`, `src/core/timelineReducer.ts`, and `src/core/useTimeline.ts`. Wired into `App.tsx` and `WhiteboardCanvas.tsx`. 19/19 unit tests passing across 3 test suites (`tests/*.test.ts` in 150ms). `npm run lint` passes (0 errors/warnings). `npm run build` passes cleanly. Verified in headless Windows Chrome: QuickSort swaps slots `[29, 10] -> [10, 29]` at step 2 with `swapped` highlighting, and places pivot `13` at sorted index 1 at step 5.
 
-### Phase 3: Array & Pointer TLDraw Custom Shape (Hour 6 - 9)
-- [ ] Create `ArrayShapeUtil` extending TLDraw `ShapeUtil`.
-- [ ] Implement slot grid with indices $[0 \dots n-1]$.
-- [ ] Implement inline double-click editing of slot values (`values[i]`).
-- [ ] Implement draggable pointer badges ($i, j, pivot, etc.$) with magnetic snapping to array cells.
-- [ ] Add visual states: comparing, swapped, sorted, active animations.
-- [ ] *Done Criteria:* Array can be directly manipulated by mouse; programmatic calls to `movePointer` and `swap` transition visually.
+### Phase 3: Array & Pointer TLDraw Custom Shape (Hour 6 - 9) — DONE
+- [x] Create `ArrayShapeUtil` extending TLDraw `BaseBoxShapeUtil`.
+- [x] Implement slot grid with indices $[0 \dots n-1]$ and pre-array $[-1]$ start slot.
+- [x] Implement inline double-click editing of slot values (`values[i]`).
+- [x] Implement draggable and clickable pointer badges ($i, j, pivot, left, right, mid$) with magnetic snapping to array cells.
+- [x] Add visual states: comparing (amber), swapped (fuchsia), sorted (emerald), active (indigo) animations and borders.
+- [x] *Done Criteria:* Array can be directly manipulated by mouse/keyboard; programmatic calls to `movePointer` and `swap` transition visually.
+- Verified: Created `src/canvas/shapes/ArrayShapeUtil.ts`, `ArrayComponent.tsx`, and `arrayShapeLogic.ts`. Registered in `WhiteboardCanvas.tsx` via `shapeUtils={[ArrayShapeUtil]}` with `maxFontsToLoadBeforeRender: 0` for instant canvas readiness. 28/28 unit tests passing across 4 test suites (`tests/*.test.ts` in 160ms). `npm run lint` (`oxlint`) passes with 0 warnings/0 errors. `npm run build` (`tsc -b && vite build`) passes in 1.06s. Visual verification in Windows Chrome: QuickSort partition step 0 (ghost `[-1]` cell with $i=-1$, $j=0$, $pivot=4$), step 2 (swap $[29, 10] \to [10, 29]$ with fuchsia highlights), and step 5 (pivot 13 permanently sorted at index 1).
 
 ### Phase 4: Linked List & BST Custom Shapes (Hour 9 - 13)
 - [ ] Create `LinkedListNodeShapeUtil`: card with data and `next` port.
