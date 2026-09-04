@@ -7,9 +7,11 @@ import { ArrayShapeUtil } from '../../canvas/shapes/ArrayShapeUtil';
 import { LinkedListNodeShapeUtil } from '../../canvas/shapes/LinkedListNodeShapeUtil';
 import { BSTNodeShapeUtil } from '../../canvas/shapes/BSTNodeShapeUtil';
 import { LoopTrackerShapeUtil } from '../../canvas/shapes/LoopTrackerShapeUtil';
+import { VariableCardsShapeUtil } from '../../canvas/shapes/VariableCardsShapeUtil';
 import { layoutLinkedList } from '../../canvas/shapes/linkedListLogic';
 import { layoutTree } from '../../canvas/shapes/treeLayoutLogic';
 import { entityToLoopShapeProps } from '../../canvas/shapes/loopTrackerLogic';
+import { entityMapToVariableItems } from '../../canvas/shapes/variableCardsLogic';
 
 interface WhiteboardCanvasProps {
   currentStep: TimelineStep;
@@ -23,6 +25,7 @@ const customShapeUtils = [
   LinkedListNodeShapeUtil,
   BSTNodeShapeUtil,
   LoopTrackerShapeUtil,
+  VariableCardsShapeUtil,
 ];
 
 /**
@@ -322,49 +325,6 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
     return changed;
   }, [variableCards, varSnapshot]);
 
-  // Draggable state for On-Canvas Variable Cards
-  const [cardPos, setCardPos] = useState<{ x: number; y: number } | null>(null);
-  const [isDraggingCards, setIsDraggingCards] = useState(false);
-  const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
-    startX: 0,
-    startY: 0,
-    initX: 48,
-    initY: 0,
-  });
-
-  const handleCardsMouseDown = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button')) return;
-    setIsDraggingCards(true);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    dragStartRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initX: cardPos ? cardPos.x : rect.left,
-      initY: cardPos ? cardPos.y : rect.top,
-    };
-  };
-
-  useEffect(() => {
-    if (!isDraggingCards) return;
-    const handleMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStartRef.current.startX;
-      const dy = e.clientY - dragStartRef.current.startY;
-      setCardPos({
-        x: Math.max(10, dragStartRef.current.initX + dx),
-        y: Math.max(10, dragStartRef.current.initY + dy),
-      });
-    };
-    const handleMouseUp = () => {
-      setIsDraggingCards(false);
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDraggingCards]);
-
   // When switching presets, clear previous shapes so new scenario initializes cleanly
   const prevScenarioRef = useRef(scenarioId);
   useEffect(() => {
@@ -602,7 +562,62 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
       const existing = editor.getShape(loopShapeId);
       if (existing) editor.deleteShape(loopShapeId);
     }
-  }, [editor, scenarioId, arrayEntity, linkedListNodes, listPositions, treeNodes, treeLayout, loopEntity]);
+
+    // 5. Synchronize On-Canvas Variable Cards Shape
+    const varShapeId = 'shape:dsa-main-variables' as any;
+    if (variableCards.length > 0) {
+      const existing = editor.getShape(varShapeId);
+      const varItems = entityMapToVariableItems(canvasState.variables, changedVars);
+      const defaultX = scenarioId === 'quicksort-partition' ? 60 : scenarioId === 'bst-insert' ? 540 : 500;
+      const defaultY = scenarioId === 'bst-insert' ? 70 : 340;
+
+      if (existing) {
+        // PERSISTENCE GUARANTEE: Never overwrite x/y positions or user-resized w/h across steps!
+        const existingProps = (existing as any).props || {};
+        const preservedW = typeof existingProps.w === 'number' ? existingProps.w : 520;
+        const preservedH = typeof existingProps.h === 'number' ? existingProps.h : 175;
+
+        editor.updateShape({
+          id: varShapeId,
+          type: 'dsa-variable-cards',
+          props: {
+            w: preservedW,
+            h: preservedH,
+            title: 'vars',
+            variables: varItems,
+          },
+        } as any);
+      } else {
+        editor.createShape({
+          id: varShapeId,
+          type: 'dsa-variable-cards',
+          x: defaultX,
+          y: defaultY,
+          props: {
+            w: 520,
+            h: 175,
+            title: 'vars',
+            variables: varItems,
+          },
+        } as any);
+      }
+    } else {
+      const existing = editor.getShape(varShapeId);
+      if (existing) editor.deleteShape(varShapeId);
+    }
+  }, [
+    editor,
+    scenarioId,
+    arrayEntity,
+    linkedListNodes,
+    listPositions,
+    treeNodes,
+    treeLayout,
+    loopEntity,
+    variableCards,
+    canvasState.variables,
+    changedVars,
+  ]);
 
   // Handle direct manipulation seek events from on-canvas loop iteration pills
   useEffect(() => {
@@ -627,61 +642,6 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
           options={{ maxFontsToLoadBeforeRender: 0 }}
           onMount={handleMount}
         />
-      </div>
-
-      {/* On-Canvas Sketched Variable Cards (Floating Draggable Semantic Overlay Matching Design) */}
-      <div
-        onMouseDown={handleCardsMouseDown}
-        style={
-          cardPos
-            ? { left: `${cardPos.x}px`, top: `${cardPos.y}px`, bottom: 'auto' }
-            : undefined
-        }
-        className={`z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-md p-4 rounded-2xl border-2 border-slate-200 shadow-xl max-w-xl transition-shadow duration-200 cursor-grab active:cursor-grabbing ${
-          cardPos ? 'fixed' : 'absolute bottom-28 left-12'
-        } ${isDraggingCards ? 'shadow-2xl ring-2 ring-indigo-400 scale-[1.02]' : ''}`}
-      >
-        <div className="flex items-center justify-between mb-2 gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-slate-500 font-semibold uppercase tracking-wider">
-              On-Canvas Variable Cards:
-            </span>
-            <span className="text-[9px] font-mono text-slate-400">
-              (drag to move)
-            </span>
-          </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-medium">
-            Reactive State
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {variableCards.map((card) => {
-            const isMint = card.color === 'mint';
-            const isAmber = card.color === 'amber';
-            const hasChanged = changedVars.has(card.name);
-
-            return (
-              <div
-                key={card.name}
-                className={`px-4 py-2 rounded-xl border-2 shadow-xs transition-all duration-300 hover:scale-105 cursor-pointer ${
-                  hasChanged
-                    ? 'ring-3 ring-amber-400 scale-110 shadow-lg'
-                    : ''
-                } ${
-                  isMint
-                    ? 'border-emerald-500/80 bg-emerald-50/80 text-emerald-800'
-                    : isAmber
-                    ? 'border-amber-400/80 bg-amber-50/80 text-amber-900'
-                    : 'border-indigo-400/80 bg-indigo-50/80 text-indigo-900'
-                }`}
-              >
-                <span className="font-handwriting text-xl font-bold transition-all duration-200">
-                  {card.name} = {String(card.value)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );
