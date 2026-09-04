@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Tldraw } from '@tldraw/tldraw';
-import type { Editor } from '@tldraw/tldraw';
+import { Tldraw, track, useEditor } from '@tldraw/tldraw';
+import type { Editor, TLComponents } from '@tldraw/tldraw';
 import type { TimelineStep } from '../../types/studio';
 import type { CanvasEntities } from '../../types/timeline';
 import { ArrayShapeUtil } from '../../canvas/shapes/ArrayShapeUtil';
@@ -17,6 +17,253 @@ interface WhiteboardCanvasProps {
 
 const customShapeUtils = [ArrayShapeUtil, LinkedListNodeShapeUtil, BSTNodeShapeUtil];
 
+/**
+ * OnTheCanvas Connectors Overlay
+ * Mounts directly inside TLDraw's canvas layer (tl-html-layer) so that
+ * all arrows and connectors inherit the canvas camera transforms (pan & zoom)
+ * automatically at 60/120fps GPU acceleration.
+ */
+const CanvasConnectorsOverlay = track(() => {
+  const editor = useEditor();
+  const allShapes = editor.getCurrentPageShapes();
+
+  // Gather all linked list and tree shapes
+  const linkedShapes: any[] = allShapes.filter((s: any) => s.type === 'dsa-linked-node');
+  const treeShapes: any[] = allShapes.filter((s: any) => s.type === 'dsa-tree-node');
+
+  if (linkedShapes.length === 0 && treeShapes.length === 0) {
+    return null;
+  }
+
+  // Fast lookups by nodeId or shapeId
+  const linkedByNodeId = new Map<string, any>();
+  for (const s of linkedShapes) {
+    const nodeId = s.props?.nodeId || s.id.replace('shape:dsa-linked-', '');
+    linkedByNodeId.set(nodeId, s);
+  }
+
+  const treeByNodeId = new Map<string, any>();
+  for (const s of treeShapes) {
+    const nodeId = s.props?.nodeId || s.id.replace('shape:dsa-tree-', '');
+    treeByNodeId.set(nodeId, s);
+  }
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: 1,
+        height: 1,
+        overflow: 'visible',
+        pointerEvents: 'none',
+      }}
+    >
+      <defs>
+        {/* Tree Arrow Marker */}
+        <marker
+          id="canvas-tree-arrow"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+        </marker>
+
+        {/* Forward Linked List Arrow Marker */}
+        <marker
+          id="canvas-list-arrow"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5" />
+        </marker>
+
+        {/* Reverse Linked List Arrow Marker */}
+        <marker
+          id="canvas-list-arrow-reverse"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
+        </marker>
+      </defs>
+
+      {/* Render Tree Branches dynamically anchored to live shape coordinates */}
+      {treeShapes.map((parent) => {
+        const branches: React.ReactNode[] = [];
+        const pRadius = 35; // 70px diameter circle
+        const cx1 = parent.x + pRadius;
+        const cy1 = parent.y + pRadius;
+
+        // Left child branch
+        if (parent.props?.leftId) {
+          const child = treeByNodeId.get(parent.props.leftId);
+          if (child) {
+            const cx2 = child.x + pRadius;
+            const cy2 = child.y + pRadius;
+            const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
+            const x1 = cx1 + pRadius * Math.cos(angle);
+            const y1 = cy1 + pRadius * Math.sin(angle);
+            const x2 = cx2 - (pRadius + 2) * Math.cos(angle);
+            const y2 = cy2 - (pRadius + 2) * Math.sin(angle);
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            branches.push(
+              <g key={`tree-${parent.id}->${child.id}-left`}>
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#6366f1"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 2"
+                  markerEnd="url(#canvas-tree-arrow)"
+                />
+                <circle
+                  cx={midX}
+                  cy={midY}
+                  r="10"
+                  fill="#e0e7ff"
+                  stroke="#6366f1"
+                  strokeWidth="1.5"
+                />
+                <text
+                  x={midX}
+                  y={midY + 3.5}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  fill="#4338ca"
+                >
+                  L
+                </text>
+              </g>
+            );
+          }
+        }
+
+        // Right child branch
+        if (parent.props?.rightId) {
+          const child = treeByNodeId.get(parent.props.rightId);
+          if (child) {
+            const cx2 = child.x + pRadius;
+            const cy2 = child.y + pRadius;
+            const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
+            const x1 = cx1 + pRadius * Math.cos(angle);
+            const y1 = cy1 + pRadius * Math.sin(angle);
+            const x2 = cx2 - (pRadius + 2) * Math.cos(angle);
+            const y2 = cy2 - (pRadius + 2) * Math.sin(angle);
+            const midX = (x1 + x2) / 2;
+            const midY = (y1 + y2) / 2;
+
+            branches.push(
+              <g key={`tree-${parent.id}->${child.id}-right`}>
+                <line
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#6366f1"
+                  strokeWidth="2.5"
+                  strokeDasharray="4 2"
+                  markerEnd="url(#canvas-tree-arrow)"
+                />
+                <circle
+                  cx={midX}
+                  cy={midY}
+                  r="10"
+                  fill="#e0e7ff"
+                  stroke="#6366f1"
+                  strokeWidth="1.5"
+                />
+                <text
+                  x={midX}
+                  y={midY + 3.5}
+                  textAnchor="middle"
+                  fontSize="10"
+                  fontFamily="monospace"
+                  fontWeight="bold"
+                  fill="#4338ca"
+                >
+                  R
+                </text>
+              </g>
+            );
+          }
+        }
+
+        return branches;
+      })}
+
+      {/* Render Linked List Pointers dynamically anchored to live shape coordinates */}
+      {linkedShapes.map((node) => {
+        const nextId = node.props?.nextId;
+        if (!nextId) return null;
+        const targetNode = linkedByNodeId.get(nextId);
+        if (!targetNode) return null;
+
+        const isForward = targetNode.x > node.x;
+
+        if (isForward) {
+          const startX = node.x + (node.props?.w || 160);
+          const startY = node.y + 60;
+          const endX = targetNode.x;
+          const endY = targetNode.y + 60;
+
+          return (
+            <path
+              key={`list-wire-${node.id}->${targetNode.id}`}
+              d={`M ${startX} ${startY} L ${endX} ${endY}`}
+              stroke="#4f46e5"
+              strokeWidth="3"
+              markerEnd="url(#canvas-list-arrow)"
+            />
+          );
+        } else {
+          // Backward / reversed pointer curve overhead
+          const startX = node.x + 20;
+          const startY = node.y + 10;
+          const endX = targetNode.x + (targetNode.props?.w || 160) - 20;
+          const endY = targetNode.y + 10;
+          const midY = Math.min(node.y, targetNode.y) - 45;
+
+          return (
+            <path
+              key={`list-wire-${node.id}->${targetNode.id}`}
+              d={`M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`}
+              stroke="#f59e0b"
+              strokeWidth="3"
+              strokeDasharray="6 3"
+              fill="none"
+              markerEnd="url(#canvas-list-arrow-reverse)"
+            />
+          );
+        }
+      })}
+    </svg>
+  );
+});
+
+const customComponents: TLComponents = {
+  OnTheCanvas: CanvasConnectorsOverlay,
+};
+
 export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
   scenarioId,
   canvasState,
@@ -30,6 +277,15 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 
   const handleMount = useCallback((mountedEditor: Editor) => {
     setEditor(mountedEditor);
+    if (typeof window !== 'undefined') {
+      (window as any).__tldraw_editor = mountedEditor;
+      const params = new URLSearchParams(window.location.search);
+      const px = parseFloat(params.get('panX') || '0');
+      const py = parseFloat(params.get('panY') || '0');
+      if (px || py) {
+        mountedEditor.setCamera({ x: px, y: py, z: 1 });
+      }
+    }
   }, []);
 
   // Compute layout coordinates for Linked List and BST
@@ -198,144 +454,15 @@ export const WhiteboardCanvas: React.FC<WhiteboardCanvasProps> = ({
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-[#fafafa]">
-      {/* TLDraw Whiteboard Canvas Engine */}
+      {/* TLDraw Whiteboard Canvas Engine with OnTheCanvas Connectors */}
       <div className="absolute inset-0 z-0">
         <Tldraw
           shapeUtils={customShapeUtils}
+          components={customComponents}
           options={{ maxFontsToLoadBeforeRender: 0 }}
           onMount={handleMount}
         />
       </div>
-
-      {/* Dynamic Visual Connectors Overlay for Tree and Linked List */}
-      {scenarioId === 'bst-insert' && treeLayout.connectors.length > 0 && (
-        <svg
-          className="absolute inset-0 z-5 pointer-events-none w-full h-full"
-          style={{ position: 'absolute' }}
-        >
-          <defs>
-            <marker
-              id="tree-arrow"
-              viewBox="0 0 10 10"
-              refX="6"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
-            </marker>
-          </defs>
-          {treeLayout.connectors.map((c) => (
-            <g key={`${c.fromId}->${c.toId}`}>
-              <line
-                x1={c.x1}
-                y1={c.y1}
-                x2={c.x2}
-                y2={c.y2}
-                stroke="#6366f1"
-                strokeWidth="2.5"
-                strokeDasharray="4 2"
-                markerEnd="url(#tree-arrow)"
-              />
-              {/* Branch Label Badge: L or R */}
-              <circle
-                cx={(c.x1 + c.x2) / 2}
-                cy={(c.y1 + c.y2) / 2}
-                r="10"
-                fill="#e0e7ff"
-                stroke="#6366f1"
-                strokeWidth="1.5"
-              />
-              <text
-                x={(c.x1 + c.x2) / 2}
-                y={(c.y1 + c.y2) / 2 + 3.5}
-                textAnchor="middle"
-                fontSize="10"
-                fontFamily="monospace"
-                fontWeight="bold"
-                fill="#4338ca"
-              >
-                {c.branch === 'left' ? 'L' : 'R'}
-              </text>
-            </g>
-          ))}
-        </svg>
-      )}
-
-      {scenarioId === 'reverse-linked-list' && (
-        <svg
-          className="absolute inset-0 z-5 pointer-events-none w-full h-full"
-          style={{ position: 'absolute' }}
-        >
-          <defs>
-            <marker
-              id="list-arrow"
-              viewBox="0 0 10 10"
-              refX="6"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#4f46e5" />
-            </marker>
-            <marker
-              id="list-arrow-reverse"
-              viewBox="0 0 10 10"
-              refX="6"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b" />
-            </marker>
-          </defs>
-          {Object.values(linkedListNodes).map((node) => {
-            if (!node.nextId || !listPositions[node.nextId] || !listPositions[node.id]) {
-              return null;
-            }
-            const fromPos = listPositions[node.id];
-            const toPos = listPositions[node.nextId];
-            const isForward = toPos.x > fromPos.x;
-
-            if (isForward) {
-              const startX = fromPos.x + 160;
-              const startY = fromPos.y + 60;
-              const endX = toPos.x;
-              const endY = toPos.y + 60;
-              return (
-                <path
-                  key={`wire-${node.id}->${node.nextId}`}
-                  d={`M ${startX} ${startY} L ${endX} ${endY}`}
-                  stroke="#4f46e5"
-                  strokeWidth="3"
-                  markerEnd="url(#list-arrow)"
-                />
-              );
-            } else {
-              // Backward / reversed pointer curve overhead
-              const startX = fromPos.x + 20;
-              const startY = fromPos.y + 10;
-              const endX = toPos.x + 140;
-              const endY = toPos.y + 10;
-              const midY = fromPos.y - 45;
-              return (
-                <path
-                  key={`wire-${node.id}->${node.nextId}`}
-                  d={`M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`}
-                  stroke="#f59e0b"
-                  strokeWidth="3"
-                  strokeDasharray="6 3"
-                  fill="none"
-                  markerEnd="url(#list-arrow-reverse)"
-                />
-              );
-            }
-          })}
-        </svg>
-      )}
 
       {/* On-Canvas Sketched Variable Cards (Floating Semantic Overlay Matching Design) */}
       <div className="absolute bottom-28 left-12 z-10 pointer-events-auto select-none bg-white/95 backdrop-blur-xs p-4 rounded-2xl border border-slate-200 shadow-xl max-w-xl transition-all duration-300">
